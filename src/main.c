@@ -28,7 +28,9 @@
 #define ASTERO_RESOLUTION 256
 
 #define ASTERO_OUT_MARGIN 10
+#define ASTERO_LIFE 3
 
+#define ASTERO_DAMAGE_SCALE 3
 
 #define MAX_ASTEROIDS 64
 
@@ -81,6 +83,7 @@ struct asteroid {
     uint8_t side;
     uint32_t rand_offset;
     uint8_t flip_flags;
+    uint8_t life;
     float x, y, dx, dy;
     enum astsize {MINI, SMALL, FULLSIZE} size;
 } asteroids[MAX_ASTEROIDS];
@@ -179,12 +182,14 @@ void spawn_asteroid(uint8_t x, uint8_t y, int8_t xdir, int8_t ydir, enum astsize
             asteroids[i].size = size;
             asteroids[i].x = x;
             asteroids[i].y = y;
+
+            asteroids[i].life = ASTERO_LIFE * (1 + (uint8_t)size);
             
             float xvar = rand_ast_var();
             float yvar = rand_ast_var();
 
-            asteroids[i].dx = xvar + xdir * (ASTERO_SPEED_BASE + (float)size * ASTERO_SIZE_BOOST);
-            asteroids[i].dy = yvar + ydir * (ASTERO_SPEED_BASE + (float)size * ASTERO_SIZE_BOOST);
+            asteroids[i].dx = xvar + xdir * (ASTERO_SPEED_BASE + (float)(2-size) * ASTERO_SIZE_BOOST);
+            asteroids[i].dy = yvar + ydir * (ASTERO_SPEED_BASE + (float)(2-size) * ASTERO_SIZE_BOOST);
 
             asteroids[i].rand_offset = (uint32_t)rand();
 
@@ -221,6 +226,37 @@ void show_asteroid(struct asteroid a) {
             BLIT_2BPP|a.flip_flags);
 }
 
+bool astero_collision(float x1, float y1, float r1, float x2, float y2, float r2) {
+    float dx = x1-x2;
+    float dy = y1-y2;
+    float dist = r1+r2;
+
+    return dx*dx + dy*dy < dist*dist;
+}
+
+void astero_damage(int ai, int pi, uint8_t damage) {
+    if (asteroids[ai].life > damage) {
+        asteroids[ai].life -= damage;
+    } else {
+        asteroids[ai].active = false;
+
+        //EXPLOSION
+        
+        int size = (int)asteroids[ai].size;
+
+        if (size > 0) {
+            for(int i=0 ; i<2 ; i++) {
+                uint8_t x = (uint8_t)asteroids[ai].x;
+                uint8_t y = (uint8_t)asteroids[ai].y;
+                spawn_asteroid(x, y, 0, (int8_t)(1-2*pi), (enum astsize) size-1);
+            }
+        } else {
+            //SPAWN BONUS
+        }
+    }
+}
+
+
 void update_asteroids() {
     if (asteroid_spawn_delay <= 0) {
         asteroid_spawn_delay = ASTERO_TIMER_MIN + rand()&ASTERO_TIMER_MASK;
@@ -245,6 +281,32 @@ void update_asteroids() {
             show_asteroid(asteroids[i]);
         }
     }
+}
+
+bool check_bullet_collision(int pi, int bi) {
+    uint8_t *bx = &p[pi].bullet.x[bi], *by = &p[pi].bullet.y[bi];
+    if (collision(p[1-pi].x, p[1-pi].y, P_COLL_WIDTH, P_COLL_HEIGHT,
+                  *bx, *by, bulletWidth, bulletHeight)) {
+        damage(1-pi, p[pi].bullet.damage);
+        return true;
+    }
+
+    for(int i = 0; i<MAX_ASTEROIDS ; i++) {
+        if (asteroids[i].active) {
+            if (astero_collision(
+                asteroids[i].x, asteroids[i].y,
+                astero_size[asteroids[i].size]/2.0f,
+                *bx, *by,
+                bulletWidth/2.0f
+            )) {
+                astero_damage(i, pi, p[pi].bullet.damage);
+                return true;
+            }
+        }
+    }
+    
+    
+    return false; 
 }
 
 void update_players() {
@@ -283,15 +345,28 @@ void update_players() {
         if (p[i].bullet.timeout)
             p[i].bullet.timeout--;
 
+        for(int ai = 0; ai<MAX_ASTEROIDS ; ai++) {
+            if (asteroids[ai].active) {
+                if (astero_collision(
+                    asteroids[ai].x, asteroids[ai].y,
+                    astero_size[asteroids[ai].size]/2.0f,
+                    p[i].x,
+                    p[i].y,
+                    P_COLL_WIDTH/2
+                )) {
+                    astero_damage(ai, i, asteroids[ai].life);
+                    damage(i, ASTERO_DAMAGE_SCALE * ((uint8_t)asteroids[ai].size+1));
+                }
+            }
+        }
+        
         for (int j = 0 ; j < SCREEN_SIZE ; j++) {
             uint8_t *bx = &p[i].bullet.x[j], *by = &p[i].bullet.y[j];
             if (*by) {
                 if (*by < 0 || *by > SCREEN_SIZE) {
                     *by = 0;
                 } else {
-                    if (collision(p[1-i].x, p[1-i].y, P_COLL_WIDTH, P_COLL_HEIGHT,
-                                  *bx, *by, bulletWidth, bulletHeight)) {
-                        damage(1-i, p[i].bullet.damage);
+                    if (check_bullet_collision(i,j)) {
         		*DRAW_COLORS = player2color(p[i]);
                         oval(*bx-EXPLO_SIZE/2, *by-EXPLO_SIZE/2, EXPLO_SIZE, EXPLO_SIZE);
                         *by = 0;
