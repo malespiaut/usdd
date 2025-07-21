@@ -1,12 +1,12 @@
-#include "wasm4.h"
 #include <stdbool.h>
 
-#define P_SIZE 8
+#include "wasm4.h"
 
+#include "sprites.h"
+
+#define P_SIZE 30
+#define P_Y_MARGIN 30
 #define EXPLO_SIZE 30
-
-#define P_Y_MARGIN 12
-
 #define BAR_SIZE 5
 
 const uint8_t smiley[] = {
@@ -25,6 +25,7 @@ struct player {
     uint8_t id;
     const uint8_t *pad;
     uint8_t x, y;
+    int8_t xdir;
     uint8_t speed;
     uint8_t life;
     uint8_t drawflags;
@@ -61,21 +62,12 @@ void reset_players() {
     p[0].pad = GAMEPAD1;
     p[0].y   = P_Y_MARGIN;
     p[0].bullet.dir = 1;
+    p[0].drawflags = BLIT_FLIP_Y;
 
     p[1].id = 1;
     p[1].pad = GAMEPAD2;
     p[1].y   = SCREEN_SIZE - P_Y_MARGIN;
-    p[1].drawflags = BLIT_FLIP_Y;
     p[1].bullet.dir = -1;
-}
-
-void draw_life(struct player p) {
-    uint8_t x = 0;
-    uint8_t y = (p.id == 0) ? 0 : SCREEN_SIZE - BAR_SIZE; 
-
-    *DRAW_COLORS = p.id + 3;
-    
-    rect(0, y, p.life, BAR_SIZE);
 }
 
 void reset_palette(){
@@ -113,11 +105,16 @@ void update_players() {
             p[i].x -= p[i].speed;
             if (p[i].x - P_SIZE/2 < 0)
                 p[i].x = P_SIZE/2;
-        } 
-        if (*p[i].pad & BUTTON_RIGHT) {
+            if (p[i].xdir < 2)
+                p[i].xdir++;
+        } else if (*p[i].pad & BUTTON_RIGHT) {
             p[i].x += p[i].speed;
             if (p[i].x + P_SIZE/2 > SCREEN_SIZE)
                 p[i].x = SCREEN_SIZE - P_SIZE/2;
+            if (p[i].xdir > -2)
+                p[i].xdir--;
+        } else {
+            p[i].xdir = 0;
         }
         if (*p[i].pad & BUTTON_1 && !p[i].bullet.timeout) {
             p[i].bullet.fire = true;
@@ -154,10 +151,60 @@ void update_players() {
     } 
 }
 
+void draw_life(struct player p) {
+    uint8_t x = 0;
+    uint8_t y = (p.id == 0) ? 0 : SCREEN_SIZE - BAR_SIZE; 
+
+    *DRAW_COLORS = p.id + 3;
+    
+    rect(0, y, p.life, BAR_SIZE);
+}
+
+void blit_ship(struct player p, const uint8_t* sprite, int sprite_idx, uint32_t stride, uint32_t flags) {
+    blitSub(sprite, 
+            p.x - P_SIZE/2, p.y - P_SIZE/2,
+            P_SIZE, P_SIZE,
+            (uint32_t)(P_SIZE*sprite_idx), 0,
+            stride,
+            flags | p.drawflags);
+    
+}
+
+void draw_ship(struct player p) {
+
+    uint8_t xflip = 0;
+
+    int sprite_idx = p.xdir;
+
+    if (sprite_idx < 0) {
+        xflip = BLIT_FLIP_X;
+        sprite_idx = -sprite_idx;
+    }
+    
+    *DRAW_COLORS = 1;
+
+    blit_ship(p, ship_shadow, sprite_idx, ship_shadowWidth, ship_shadowFlags | xflip);
+/*
+    blitSub(ship_shadow, 
+            p.x - P_SIZE/2, p.y - P_SIZE/2,
+            P_SIZE, P_SIZE,
+            0, 0, ship_shadowWidth,
+            BLIT_1BPP | xflip | p.drawflags);
+  */   
+    *DRAW_COLORS = (p.id ? 0x4000 : 0x3000) | 0x20;
+    blit_ship(p, ship, sprite_idx, shipWidth, shipFlags | xflip);
+    
+    /*blitSub(ship, 
+            p.x - P_SIZE/2, p.y - P_SIZE/2,
+            P_SIZE, P_SIZE,
+            P_SIZE*sprite_idx, 0, shipWidth,
+            shipFlags | xflip | p.drawflags);*/
+}
+
 void draw_players() {
     for (int i=0 ; i<2 ; i++){
         draw_life(p[i]);
-        blit(smiley, p[i].x - P_SIZE/2, p[i].y - P_SIZE/2, 8, 8, BLIT_1BPP|p[i].drawflags);
+        draw_ship(p[i]);
     } 
 }
 
