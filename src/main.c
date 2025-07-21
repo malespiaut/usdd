@@ -10,20 +10,13 @@
 #define P_COLL_HEIGHT 15
 
 #define P_Y_MARGIN 30
+
+#define CANON_Y_OFFSET 11
+
+#define CANON_X_OFFSET 10
+
 #define EXPLO_SIZE 30
 #define BAR_SIZE 5
-
-const uint8_t smiley[] = {
-    0b11000011,
-    0b10000001,
-    0b00100100,
-    0b00100100,
-    0b00000000,
-    0b00100100,
-    0b10011001,
-    0b11000011,
-};
-
 
 struct player {
     uint8_t id;
@@ -105,6 +98,15 @@ void damage(int id, uint8_t damage) {
     }
 }
 
+int next_free(uint8_t *array, int length, int start) {
+    while (start<length && array[start] != 0)
+        start++;
+    if (start >= length)
+        start = -1;
+
+    return start;
+}
+
 void start() {
     reset_players();
     reset_palette();
@@ -130,8 +132,18 @@ void update_players() {
             p[i].xdir = 0;
         }
         if (*p[i].pad & BUTTON_1 && !p[i].bullet.timeout) {
-            p[i].bullet.fire = true;
             p[i].bullet.timeout = p[i].bullet.rate; 
+
+            int bi = 0;
+
+            for (int j = 0 ; j<2 ; j++) {
+                bi = next_free(p[i].bullet.y, sizeof(p[i].bullet.y), bi);
+                if (bi >= 0) {
+                    p[i].bullet.y[bi] = (uint8_t) (p[i].y + CANON_Y_OFFSET/2 * p[i].bullet.dir);
+                    p[i].bullet.x[bi] = (uint8_t) (p[i].x - CANON_X_OFFSET + CANON_X_OFFSET*2*j);
+                }
+            }
+             
         }
 
         if (p[i].bullet.timeout)
@@ -159,12 +171,7 @@ void update_players() {
                              bulletFlags|(p[i].bullet.dir>0?0:BLIT_FLIP_Y));
                     }
                 }
-                
-            } else if (p[i].bullet.fire) {
-                p[i].bullet.fire = false;
-                *by = (uint8_t) (p[i].y + P_SIZE/2 * p[i].bullet.dir);
-                *bx = p[i].x;
-            }
+            }               
         }
     } 
 }
