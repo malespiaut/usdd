@@ -9,7 +9,7 @@
 #define P_COLL_WIDTH 28
 #define P_COLL_HEIGHT 15
 
-#define P_Y_MARGIN 30
+#define P_Y_MARGIN 20
 
 #define CANON_Y_OFFSET 11
 
@@ -17,6 +17,37 @@
 
 #define EXPLO_SIZE 30
 #define BAR_SIZE 5
+
+
+#define ASTERO_TIMER_MIN 30
+#define ASTERO_TIMER_MASK 0x7f
+
+#define ASTERO_SPEED_BASE 0.3f
+#define ASTERO_SIZE_BOOST 0.3f
+#define ASTERO_SPEED_VAR  0.2f
+#define ASTERO_RESOLUTION 256
+
+#define ASTERO_OUT_MARGIN 10
+
+
+#define MAX_ASTEROIDS 64
+
+/* rand() implem from C std */
+
+static unsigned long int nextrand = 1;
+
+int rand(void) // RAND_MAX assumed to be 32767
+{
+    nextrand = nextrand * 1103515245 + 12345;
+    return (unsigned int)(nextrand/65536) % 32768;
+}
+
+void srand(unsigned int seed)
+{
+    nextrand = seed;
+}
+
+
 
 struct player {
     uint8_t id;
@@ -41,9 +72,25 @@ struct player {
     .life = 64,
     .speed = 1,
     .bullet.speed = 1,
-    .bullet.rate  = 30,
+    .bullet.rate  = 60,
     .bullet.damage = 3,
 };
+
+struct asteroid {
+    bool active;
+    uint8_t side;
+    uint32_t rand_offset;
+    uint8_t flip_flags;
+    float x, y, dx, dy;
+    enum astsize {MINI, SMALL, FULLSIZE} size;
+} asteroids[MAX_ASTEROIDS];
+
+uint8_t astero_size[] = {
+    [MINI] = 5,
+    [SMALL] = 10,
+    [FULLSIZE] = 20    
+};
+
 
 enum gamestate {START, PLAY, END} state = START;
 
@@ -51,6 +98,8 @@ uint8_t winner = 0;
 uint8_t t = 0;
 
 int global_delay = 0;
+
+int asteroid_spawn_delay = 0;
 
 uint8_t player2color(struct player p) {
     return p.id ? 4 : 3;
@@ -76,6 +125,12 @@ void reset_palette(){
     PALETTE[1] = 0xffffff;
     PALETTE[2] = 0x0000ff;
     PALETTE[3] = 0xff0000;
+}
+
+void reset_asteroids(){
+    for (int i = 0 ; i<MAX_ASTEROIDS ; i++) {
+        asteroids[i] = (struct asteroid){0};
+    }
 }
 
 void set_sprite_colors(struct player p) {
@@ -111,6 +166,85 @@ void start() {
     reset_players();
     reset_palette();
     state = START;
+}
+
+float rand_ast_var() {
+    return ((float)(rand() % ASTERO_RESOLUTION - ASTERO_RESOLUTION/2)*ASTERO_SPEED_VAR*2)/ASTERO_RESOLUTION;
+}
+
+void spawn_asteroid(uint8_t x, uint8_t y, int8_t xdir, int8_t ydir, enum astsize size){
+    for(int i = 0; i<MAX_ASTEROIDS ; i++) {
+        if (!asteroids[i].active) {
+            asteroids[i].active = true;
+            asteroids[i].size = size;
+            asteroids[i].x = x;
+            asteroids[i].y = y;
+            
+            float xvar = rand_ast_var();
+            float yvar = rand_ast_var();
+
+            asteroids[i].dx = xvar + xdir * (ASTERO_SPEED_BASE + (float)size * ASTERO_SIZE_BOOST);
+            asteroids[i].dy = yvar + ydir * (ASTERO_SPEED_BASE + (float)size * ASTERO_SIZE_BOOST);
+
+            asteroids[i].rand_offset = (uint32_t)rand();
+
+            asteroids[i].flip_flags = (uint8_t)(rand()& (BLIT_FLIP_X|BLIT_FLIP_Y));
+            
+            return;
+        }
+    }
+}
+
+void show_asteroid(struct asteroid a) {
+    uint8_t size = astero_size[a.size];
+    const uint8_t* data = asteroid;
+    uint32_t stride = asteroidWidth;
+
+    if (a.size == SMALL) {
+        data = small_asteroid;
+        stride = small_asteroidWidth; 
+    } else if (a.size == MINI) {
+        data = mini_asteroid;
+        stride = mini_asteroidWidth;
+    }
+
+    uint32_t frame = ((t>>4)+a.rand_offset) % (stride / size);
+
+    *DRAW_COLORS = 0x21;
+
+    blitSub(data,
+            (int32_t) a.x - size/2,
+            (int32_t) a.y - size/2,
+            size, size,
+            size * frame, 0,
+            stride,
+            BLIT_2BPP|a.flip_flags);
+}
+
+void update_asteroids() {
+    if (asteroid_spawn_delay <= 0) {
+        asteroid_spawn_delay = ASTERO_TIMER_MIN + rand()&ASTERO_TIMER_MASK;
+        int8_t xdir = rand()%2 ? -1:1;
+        spawn_asteroid(xdir < 0 ? SCREEN_SIZE : 0, SCREEN_SIZE/2, xdir, 0, (enum astsize)(rand()%2+1));
+    } else {
+        asteroid_spawn_delay--;
+    }
+
+    for(int i = 0; i<MAX_ASTEROIDS ; i++) {
+        if (asteroids[i].active) {
+            asteroids[i].x += asteroids[i].dx;
+            asteroids[i].y += asteroids[i].dy;
+
+            if (asteroids[i].x < -ASTERO_OUT_MARGIN ||
+                asteroids[i].x > SCREEN_SIZE + ASTERO_OUT_MARGIN ||
+                asteroids[i].y < -ASTERO_OUT_MARGIN ||
+                asteroids[i].y > SCREEN_SIZE + ASTERO_OUT_MARGIN) {
+                    asteroids[i].active = false;
+            }
+
+            show_asteroid(asteroids[i]);
+        }
+    }
 }
 
 void update_players() {
@@ -235,6 +369,7 @@ void update_play() {
     *DRAW_COLORS = 2 + t/4%3;
     text("Fight!", 80-24, 80-4);
     update_players();
+    update_asteroids();
     draw_players();
 }
 
@@ -252,6 +387,7 @@ void update_end() {
 
 void update () {
     t++;
+    rand();
 
     switch (state) {
         case START:
