@@ -5,6 +5,10 @@
 #include "sprites.h"
 
 #define P_SIZE 30
+
+#define P_COLL_WIDTH 28
+#define P_COLL_HEIGHT 15
+
 #define P_Y_MARGIN 30
 #define EXPLO_SIZE 30
 #define BAR_SIZE 5
@@ -55,6 +59,10 @@ uint8_t t = 0;
 
 int global_delay = 0;
 
+uint8_t player2color(struct player p) {
+    return p.id ? 4 : 3;
+}
+
 void reset_players() {
     p[0] = p[1] = template;
 
@@ -77,9 +85,14 @@ void reset_palette(){
     PALETTE[3] = 0xff0000;
 }
 
-bool collision(struct player p, int x, int y, int w, int h) {
-    return (p.x + P_SIZE >= x && p.x <= x + w &&
-            p.y + P_SIZE >= y && p.y <= y + h);
+void set_sprite_colors(struct player p) {
+    *DRAW_COLORS = (uint16_t)(player2color(p) << 12) | 0x20; 
+}
+
+
+bool collision(int x1, int y1, int w1, int h1, int x2, int y2, int w2, int h2) {
+    return (x1 + w1/2 >= x2 - w2/2 && x1 - w1/2 <= x2 + w2/2 &&
+            y1 + h1/2 >= y2 - h2/2 && y1 - h1/2 <= y2 + h2/2);
 }
 
 void damage(int id, uint8_t damage) {
@@ -103,14 +116,14 @@ void update_players() {
     for (int i=0 ; i<2 ; i++){
         if (*p[i].pad & BUTTON_LEFT) {
             p[i].x -= p[i].speed;
-            if (p[i].x - P_SIZE/2 < 0)
-                p[i].x = P_SIZE/2;
+            if (p[i].x - P_COLL_WIDTH/2 < 0)
+                p[i].x = P_COLL_WIDTH/2;
             if (p[i].xdir < 2)
                 p[i].xdir++;
         } else if (*p[i].pad & BUTTON_RIGHT) {
             p[i].x += p[i].speed;
-            if (p[i].x + P_SIZE/2 > SCREEN_SIZE)
-                p[i].x = SCREEN_SIZE - P_SIZE/2;
+            if (p[i].x + P_COLL_WIDTH/2 > SCREEN_SIZE)
+                p[i].x = SCREEN_SIZE - P_COLL_WIDTH/2;
             if (p[i].xdir > -2)
                 p[i].xdir--;
         } else {
@@ -124,21 +137,26 @@ void update_players() {
         if (p[i].bullet.timeout)
             p[i].bullet.timeout--;
 
-        *DRAW_COLORS = p[i].id + 3;
         for (int j = 0 ; j < SCREEN_SIZE ; j++) {
             uint8_t *bx = &p[i].bullet.x[j], *by = &p[i].bullet.y[j];
             if (*by) {
                 if (*by < 0 || *by > SCREEN_SIZE) {
                     *by = 0;
                 } else {
-                    if (collision(p[1-i], *bx, *by, 1, p[i].bullet.speed)) {
+                    if (collision(p[1-i].x, p[1-i].y, P_COLL_WIDTH, P_COLL_HEIGHT,
+                                  *bx, *by, bulletWidth, bulletHeight)) {
                         damage(1-i, p[i].bullet.damage);
+        		*DRAW_COLORS = player2color(p[i]);
                         oval(*bx-EXPLO_SIZE/2, *by-EXPLO_SIZE/2, EXPLO_SIZE, EXPLO_SIZE);
                         *by = 0;
 
                     } else {
                         *by += p[i].bullet.speed * p[i].bullet.dir;
-                        rect(*bx, *by, 1, p[i].bullet.speed);
+                        set_sprite_colors(p[i]);
+                        blit(bullet,
+                             *bx-bulletWidth/2, *by - bulletHeight/2,
+                             bulletWidth, bulletHeight,
+                             bulletFlags|(p[i].bullet.dir>0?0:BLIT_FLIP_Y));
                     }
                 }
                 
@@ -155,7 +173,7 @@ void draw_life(struct player p) {
     uint8_t x = 0;
     uint8_t y = (p.id == 0) ? 0 : SCREEN_SIZE - BAR_SIZE; 
 
-    *DRAW_COLORS = p.id + 3;
+    *DRAW_COLORS = player2color(p);
     
     rect(0, y, p.life, BAR_SIZE);
 }
@@ -184,21 +202,9 @@ void draw_ship(struct player p) {
     *DRAW_COLORS = 1;
 
     blit_ship(p, ship_shadow, sprite_idx, ship_shadowWidth, ship_shadowFlags | xflip);
-/*
-    blitSub(ship_shadow, 
-            p.x - P_SIZE/2, p.y - P_SIZE/2,
-            P_SIZE, P_SIZE,
-            0, 0, ship_shadowWidth,
-            BLIT_1BPP | xflip | p.drawflags);
-  */   
-    *DRAW_COLORS = (p.id ? 0x4000 : 0x3000) | 0x20;
+
+    set_sprite_colors(p);
     blit_ship(p, ship, sprite_idx, shipWidth, shipFlags | xflip);
-    
-    /*blitSub(ship, 
-            p.x - P_SIZE/2, p.y - P_SIZE/2,
-            P_SIZE, P_SIZE,
-            P_SIZE*sprite_idx, 0, shipWidth,
-            shipFlags | xflip | p.drawflags);*/
 }
 
 void draw_players() {
