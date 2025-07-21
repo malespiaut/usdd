@@ -47,6 +47,12 @@ struct player {
     .bullet.damage = 3,
 };
 
+enum gamestate {START, PLAY, END} state = START;
+
+uint8_t winner = 0;
+uint8_t t = 0;
+
+int global_delay = 0;
 
 void reset_players() {
     p[0] = p[1] = template;
@@ -84,15 +90,23 @@ bool collision(struct player p, int x, int y, int w, int h) {
             p.y + P_SIZE >= y && p.y <= y + h);
 }
 
+void damage(int id, uint8_t damage) {
+    if (p[id].life > damage) {
+        p[id].life -= damage;
+    } else {
+        p[id].life = 0;
+        winner = (uint8_t) (1-id);
+        state = END;
+    }
+}
+
 void start() {
     reset_players();
     reset_palette();
+    state = START;
 }
 
-void update () {
-    *DRAW_COLORS = 2;
-    text("Fight!", 80-24, 80-4);
-
+void update_players() {
 
     for (int i=0 ; i<2 ; i++){
         if (*p[i].pad & BUTTON_LEFT) {
@@ -121,7 +135,7 @@ void update () {
                     *by = 0;
                 } else {
                     if (collision(p[1-i], *bx, *by, 1, p[i].bullet.speed)) {
-                        p[1-i].life -= p[i].bullet.damage;
+                        damage(1-i, p[i].bullet.damage);
                         oval(*bx-EXPLO_SIZE/2, *by-EXPLO_SIZE/2, EXPLO_SIZE, EXPLO_SIZE);
                         *by = 0;
 
@@ -137,10 +151,57 @@ void update () {
                 *bx = p[i].x;
             }
         }
-    }
+    } 
+}
 
+void draw_players() {
     for (int i=0 ; i<2 ; i++){
         draw_life(p[i]);
         blit(smiley, p[i].x - P_SIZE/2, p[i].y - P_SIZE/2, 8, 8, BLIT_1BPP|p[i].drawflags);
+    } 
+}
+
+void update_start() {
+    *DRAW_COLORS = 2 + t/4%3;
+    text("Ready?", 80-24, 80-4);
+    draw_players();
+
+    if (*p[0].pad & BUTTON_1 && *p[1].pad & BUTTON_1) {
+        state = PLAY;
+    }
+}
+
+void update_play() {
+    *DRAW_COLORS = 2 + t/4%3;
+    text("Fight!", 80-24, 80-4);
+    update_players();
+    draw_players();
+}
+
+void update_end() {
+    *DRAW_COLORS = t/4%2 ? winner+3 : 2;
+    text("Player", 80-24, 80-12);
+    text(winner == 0 ? "1" : "2", 80-4, 80);
+    text("wins!", 80-20, 80+12);
+    draw_players();
+
+    if (global_delay == 0 && *p[0].pad & BUTTON_1 && *p[1].pad & BUTTON_1) {
+        start();
+    }
+}
+
+void update () {
+    t++;
+
+    switch (state) {
+        case START:
+            update_start();
+            break;
+        case PLAY:
+            update_play();
+            break;
+        case END:
+            update_end();
+            break;
     }
 }
