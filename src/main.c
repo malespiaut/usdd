@@ -1,4 +1,5 @@
 #include <stdbool.h>
+#include <math.h>
 
 #include "wasm4.h"
 
@@ -132,7 +133,7 @@ const uint8_t * item_sprite[] = {
 enum gamestate {START, PLAY, END} state = START;
 
 uint8_t winner = 0;
-uint8_t t = 0;
+uint32_t t = 0;
 
 int global_delay = 0;
 
@@ -577,7 +578,23 @@ void draw_players() {
     } 
 }
 
+void draw_bg() {
+
+    float pi_t = (float)(t*M_PI*2/1024);
+
+    int32_t margin = bgWidth - SCREEN_SIZE;
+    
+    int32_t x = (int32_t)(sinf(pi_t) * (float)margin/2) - margin/2;
+    int32_t y = (int32_t)(cosf(pi_t) * (float)margin/2) - margin/2;
+
+    *DRAW_COLORS = 0x20;
+    blit(bg, x, y, bgWidth, bgHeight, bgFlags);
+    //blit(bg, y, x, bgWidth, bgHeight, bgFlags | BLIT_FLIP_Y);
+}
+
 void update_start() {
+    draw_bg();
+    
     *DRAW_COLORS = 2 + t/4%3;
     text("Ready?", 80-24, 80-4);
     draw_players();
@@ -588,6 +605,9 @@ void update_start() {
 }
 
 void update_play() {
+
+    draw_bg();
+    
     *DRAW_COLORS = 2 + t/4%3;
     text("Fight!", 80-24, 80-4);
     update_players();
