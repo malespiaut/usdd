@@ -42,7 +42,7 @@
 
 #define MAX_ITEMS 32
 #define ITEM_SIZE 8
-#define NUM_ITEM_TYPES 5
+#define NUM_ITEM_TYPES 5 // 5th item (arc) not implemented
 
 #define HEAL_ADD 7
 
@@ -113,15 +113,15 @@ void srand(unsigned int seed)
 struct item {
     bool active;
     uint8_t x, y;
-    enum itemtype {HEAL, ARC, FIRERATE, LASER, SPEED} type;
+    enum itemtype {HEAL, FIRERATE, LASER, SPEED, ARC} type;
 } items[MAX_ITEMS];
 
 const uint8_t * item_sprite[] = {
     [HEAL] = heal,
-    [ARC] = upgrade_arc,
     [FIRERATE] = upgrade_firerate,
     [LASER] = upgrade_laser,
     [SPEED] = upgrade_speed,
+    [ARC] = upgrade_arc, // not implemented
 };
 
 struct player {
@@ -335,7 +335,10 @@ void spawn_item(uint8_t x, uint8_t y) {
             items[i].active = true;
             items[i].x = x;
             items[i].y = y;
-            items[i].type = (enum itemtype)(rand()%NUM_ITEM_TYPES);
+
+            //items[i].type = (enum itemtype)(rand()%NUM_ITEM_TYPES);
+            // last item (arc) not implemented
+            items[i].type = (enum itemtype)(rand()%NUM_ITEM_TYPES-1);
             return;
         }
     }
@@ -445,11 +448,6 @@ void get_item(int pi, enum itemtype type) {
         case HEAL:
             p[pi].life += HEAL_ADD;
             break;
-        case ARC:
-            if (p[pi].upgrades[ARC] <= MAX_ARC) {
-                p[pi].upgrades[ARC]++;
-            }
-            break;
         case FIRERATE:
             //if(p[pi].bullet.rate > MIN_FIRERATE) {
             if (p[pi].upgrades[FIRERATE] <= MAX_FIRERATE) {
@@ -467,6 +465,11 @@ void get_item(int pi, enum itemtype type) {
             if (p[pi].upgrades[SPEED] <= MAX_SPEED) {
                 p[pi].bullet.speed += SPEED_INC; 
                 p[pi].upgrades[SPEED]++;
+            }
+            break;
+        case ARC: // not implmented
+            if (p[pi].upgrades[ARC] <= MAX_ARC) {
+                p[pi].upgrades[ARC]++;
             }
             break;
     } 
