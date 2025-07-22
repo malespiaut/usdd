@@ -10,7 +10,7 @@
 #define P_COLL_WIDTH 28
 #define P_COLL_HEIGHT 15
 
-#define P_Y_MARGIN 20
+#define P_Y_MARGIN 22
 
 #define CANON_Y_OFFSET 11
 
@@ -21,7 +21,8 @@
 #define MAX_BLASTS 32
 #define BLAST_TIME_SCALE 3
 
-#define BAR_SIZE 5
+#define BAR_SIZE 8
+#define BAR_GAP 2
 
 
 #define ASTERO_TIMER_MIN 30
@@ -47,7 +48,7 @@
 
 #define MIN_FIRERATE 30
 
-#define SPEED_INC 0.5f
+#define SPEED_INC 0.2f
 #define MAX_BULLET_SPEED 3.0f
 
 #define start_button_Frames 6
@@ -61,6 +62,18 @@
 
 #define end_nameX 42
 #define end_nameY 30
+
+
+#define MAX_UPGRADE 10
+#define MAX_ARC MAX_UPGRADE
+#define MAX_FIRERATE MAX_UPGRADE
+#define MAX_LASER MAX_UPGRADE
+#define MAX_SPEED MAX_UPGRADE
+
+const char* digits[] = {
+    "0", "1", "2", "3", "4",
+    "5", "6", "7", "8", "9",
+};
 
 /* rand() implem from C std */
 
@@ -87,6 +100,7 @@ struct player {
     uint8_t speed;
     uint8_t life;
     uint8_t drawflags;
+    uint8_t upgrades[NUM_ITEM_TYPES];
     struct {
         float speed;
         uint8_t rate;    // timeout reset value
@@ -406,16 +420,28 @@ void get_item(int pi, enum itemtype type) {
             p[pi].life += HEAL_ADD;
             break;
         case ARC:
+            if (p[pi].upgrades[ARC] <= MAX_ARC) {
+                p[pi].upgrades[ARC]++;
+            }
             break;
         case FIRERATE:
-            if(p[pi].bullet.rate > MIN_FIRERATE)
-                p[pi].bullet.rate -= 3;  
+            //if(p[pi].bullet.rate > MIN_FIRERATE) {
+            if (p[pi].upgrades[FIRERATE] <= MAX_FIRERATE) {
+                p[pi].bullet.rate -= 3;
+                p[pi].upgrades[FIRERATE]++;
+            } 
             break;
         case LASER:
+            if (p[pi].upgrades[LASER] <= MAX_LASER) {
+                p[pi].upgrades[LASER]++;
+            }
             break;
         case SPEED:
-            if(p[pi].bullet.speed < MAX_BULLET_SPEED)
+            //if(p[pi].bullet.speed < MAX_BULLET_SPEED) {
+            if (p[pi].upgrades[SPEED] <= MAX_SPEED) {
                 p[pi].bullet.speed += SPEED_INC; 
+                p[pi].upgrades[SPEED]++;
+            }
             break;
     } 
 }
@@ -561,14 +587,38 @@ void update_items() {
     }
 }
 
-void draw_life(struct player p) {
+void draw_bar(struct player p) {
     uint8_t x = 0;
     uint8_t y = (p.id == 0) ? 0 : SCREEN_SIZE - BAR_SIZE; 
 
     *DRAW_COLORS = player2color(p);
     
     rect(0, y, p.life, BAR_SIZE);
+
+    x = p.life + BAR_GAP*2;
+    
+    for (int i=1; i < NUM_ITEM_TYPES ; i++) {
+        int ups = p.upgrades[i];
+        if (ups > 0) {
+            *DRAW_COLORS = 0x20 | player2color(p);
+            blit(item_sprite[(enum itemtype) i], x, y,
+                 ITEM_SIZE, ITEM_SIZE, BLIT_1BPP);
+            x += ITEM_SIZE + BAR_GAP;
+
+
+            *DRAW_COLORS = 0x2;
+            if(ups == MAX_UPGRADE) {
+                text("MAX", x, y);
+                x += FONT_SIZE*3 + BAR_GAP*2;
+            } else {
+                text(digits[ups], x, y);
+                x += FONT_SIZE + BAR_GAP*2;
+            }
+            
+        }
+    }
 }
+    
 
 void blit_ship(struct player p, const uint8_t* sprite, int sprite_idx, uint32_t stride, uint32_t flags) {
     blitSub(sprite, 
@@ -601,7 +651,7 @@ void draw_ship(struct player p) {
 
 void draw_players() {
     for (int i=0 ; i<2 ; i++){
-        draw_life(p[i]);
+        draw_bar(p[i]);
         draw_ship(p[i]);
     } 
 }
