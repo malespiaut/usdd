@@ -57,6 +57,10 @@
 #define start_button_Time_scale 4
 
 #define START_DELAY 60
+#define END_DELAY 120
+
+#define end_nameX 42
+#define end_nameY 30
 
 /* rand() implem from C std */
 
@@ -180,6 +184,13 @@ void play_palette(){
     PALETTE[3] = 0xff0000;
 }
 
+void end_palette(){
+    PALETTE[0] = 0x0;
+    PALETTE[1] = 0xffffff;
+    PALETTE[2] = 0x7d7d7d;
+    PALETTE[3] = (winner == 0) ? 0x0000ff : 0xff0000;
+}
+
 void reset_asteroids(){
     for (int i = 0 ; i<MAX_ASTEROIDS ; i++) {
         asteroids[i] = (struct asteroid){0};
@@ -213,6 +224,8 @@ void damage(int id, uint8_t damage) {
     } else {
         p[id].life = 0;
         winner = (uint8_t) (1-id);
+        global_delay = END_DELAY;
+        end_palette();
         state = END;
     }
 }
@@ -602,7 +615,6 @@ void draw_bg() {
     int32_t x = (int32_t)(sinf(pi_t) * (float)margin/2) - margin/2;
     int32_t y = (int32_t)(cosf(pi_t) * (float)margin/2) - margin/2;
 
-    *DRAW_COLORS = 0x20;
     blit(bg, x, y, bgWidth, bgHeight, bgFlags);
     //blit(bg, y, x, bgWidth, bgHeight, bgFlags | BLIT_FLIP_Y);
 }
@@ -638,7 +650,7 @@ void update_start() {
     
     bool p1_ready = *p[0].pad & BUTTON_1;
     bool p2_ready = *p[1].pad & BUTTON_1;
-    
+
     *DRAW_COLORS = 3 + t/6%2;
 
     if (p1_ready) {
@@ -669,6 +681,7 @@ void update_start() {
 
 void update_play() {
 
+    *DRAW_COLORS = 0x20;
     draw_bg();
     
     *DRAW_COLORS = 2 + t/4%3;
@@ -680,17 +693,47 @@ void update_play() {
     update_items();
 }
 
+void draw_end_name(bool randoffset) {
+    blitSub(end_name,
+            end_nameX + (randoffset ? rand()%5-2 : 0),
+            end_nameY + (randoffset ? rand()%5-2 : 0),
+            end_nameWidth, end_nameHeight/2,
+            0, (1-winner)*end_nameHeight/2, end_nameWidth, end_nameFlags);
+}
+
 void update_end() {
+   
+    *DRAW_COLORS = 0x4320;
+
+    if(*p[winner].pad & BUTTON_1) {
+        *DRAW_COLORS = 0x40;
+        draw_bg();
+        if (t/4%2) {
+            *DRAW_COLORS = 0x30;
+            draw_end_name(true);
+            *DRAW_COLORS = 0x4420;
+        } else {
+            *DRAW_COLORS = 0x4320;
+        }
+    }
+
+    blit(end_screen, 0, 0, end_screenWidth, end_screenHeight, end_screenFlags);
+
+    *DRAW_COLORS = 0x40;
+    draw_end_name(false);
+
+    /*
     *DRAW_COLORS = t/4%2 ? winner+3 : 2;
     text("Player", 80-24, 80-12);
     text(winner == 0 ? "1" : "2", 80-4, 80);
     text("wins!", 80-20, 80+12);
     draw_players();
-
+    */
+    
     if (global_delay > 0) {
         global_delay--;
-        return;
-    } else if (*p[0].pad & BUTTON_1 && *p[1].pad & BUTTON_1) {
+    } else if (*MOUSE_BUTTONS & MOUSE_LEFT ||
+               (*p[0].pad & BUTTON_1 && *p[1].pad & BUTTON_1)) {
         global_delay = START_DELAY;
         start();
     }
