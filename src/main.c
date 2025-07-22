@@ -12,7 +12,7 @@
 
 #define P_Y_MARGIN 22
 
-#define CANON_Y_OFFSET 11
+#define CANON_Y_OFFSET 15
 
 #define CANON_X_OFFSET 10
 
@@ -69,6 +69,14 @@
 #define MAX_FIRERATE MAX_UPGRADE
 #define MAX_LASER MAX_UPGRADE
 #define MAX_SPEED MAX_UPGRADE
+
+#define SHOOT_LASER_FRAMES 11
+#define SHOOT_LASER_ORDER 0
+#define SHOOT_ARC_FRAMES 14
+#define SHOOT_ARC_ORDER 1
+#define SHOOT_BULLETS_FRAMES 6
+#define SHOOT_BULLETS_ORDER 2
+
 
 const char* digits[] = {
     "0", "1", "2", "3", "4",
@@ -647,6 +655,18 @@ void draw_ship(struct player p) {
 
     set_sprite_colors(p);
     blit_ship(p, ship, sprite_idx, shipWidth, shipFlags | xflip);
+
+
+    int bullet_frame = (p.bullet.rate - p.bullet.timeout)/2;
+    if (bullet_frame < SHOOT_BULLETS_FRAMES) {
+        blitSub(shoot_bullet_anim, 
+                p.x - P_SIZE/2, p.y - P_SIZE/2,
+                P_SIZE, P_SIZE,
+                (uint32_t)(P_SIZE*bullet_frame),
+                (sprite_idx>0 ? 0: 1) * P_SIZE,
+                shoot_bullet_animWidth,
+                shoot_bullet_animFlags | xflip | p.drawflags); 
+    }
 }
 
 void draw_players() {
