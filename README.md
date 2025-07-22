@@ -1,6 +1,20 @@
-# w4jam
+# Ultimated Space Duel Deluxe
 
-A game written in C for the [WASM-4](https://wasm4.org) fantasy console.
+![Start screen](png/startscreen.png)
+
+A 2 player game written in C in 24h for the [WASM-4](https://wasm4.org) fantasy console.
+
+## Controls
+
+- ← and → to move (player 2: S and F)
+- x to shoot bullets (p2: Q (azerty: A))
+- w to charge and fire laser, when available (p2: Tab)
+
+## Netplay
+
+1. Press Return
+2. "Copy netplay URL"
+3. Player 2 just visit the link.
 
 ## Building
 
@@ -16,11 +30,6 @@ Then run it with:
 w4 run build/cart.wasm
 ```
 
-For more info about setting up WASM-4, see the [quickstart guide](https://wasm4.org/docs/getting-started/setup?code-lang=c#quickstart).
+## Made by
 
-## Links
-
-- [Documentation](https://wasm4.org/docs): Learn more about WASM-4.
-- [Snake Tutorial](https://wasm4.org/docs/tutorials/snake/goal): Learn how to build a complete game
-  with a step-by-step tutorial.
-- [GitHub](https://github.com/aduros/wasm4): Submit an issue or PR. Contributions are welcome!
+Code: lvgx. Graphics, sound : flx.
