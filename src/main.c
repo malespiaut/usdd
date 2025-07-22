@@ -50,6 +50,14 @@
 #define SPEED_INC 0.5f
 #define MAX_BULLET_SPEED 3.0f
 
+#define start_button_Frames 6
+#define start_button_X (40-3)
+#define start_button_Y (100-3)
+#define start_button_Interval 8
+#define start_button_Time_scale 4
+
+#define START_DELAY 60
+
 /* rand() implem from C std */
 
 static unsigned long int nextrand = 1;
@@ -158,7 +166,14 @@ void reset_players() {
     p[1].bullet.dir = -1;
 }
 
-void reset_palette(){
+void start_palette(){
+    PALETTE[0] = 0x0;
+    PALETTE[1] = 0xffffff;
+    PALETTE[2] = 0xe92f2f;
+    PALETTE[3] = 0xf6c515;
+}
+
+void play_palette(){
     PALETTE[0] = 0x0;
     PALETTE[1] = 0xffffff;
     PALETTE[2] = 0x0000ff;
@@ -213,7 +228,7 @@ int next_free(float *array, int length, int start) {
 
 void start() {
     reset_players();
-    reset_palette();
+    start_palette();
     reset_asteroids();
     reset_blasts();
     reset_items();
@@ -593,13 +608,61 @@ void draw_bg() {
 }
 
 void update_start() {
-    draw_bg();
-    
-    *DRAW_COLORS = 2 + t/4%3;
-    text("Ready?", 80-24, 80-4);
-    draw_players();
+    //draw_bg();
 
-    if (*p[0].pad & BUTTON_1 && *p[1].pad & BUTTON_1) {
+    *DRAW_COLORS = 0x4320;
+
+    blit(startscreen, 0, 0, startscreenWidth, startscreenHeight, startscreenFlags);
+    
+    uint32_t button_width = start_buttonWidth/start_button_Frames;
+    uint32_t button_frame = start_button_Frames -1;
+
+    if (t/start_button_Time_scale % (start_button_Frames*start_button_Interval) < start_button_Frames) {
+        button_frame = t/start_button_Time_scale % start_button_Frames;
+    }
+
+    blitSub(start_button,
+            start_button_X, start_button_Y,
+            button_width, start_buttonHeight,
+            button_width * button_frame, 0,
+            start_buttonWidth,
+            start_buttonFlags);
+
+    //*DRAW_COLORS = 2 + t/4%3;
+    //text("Ready?", 80-24, 80-4);
+
+    if (global_delay > 0) {
+        global_delay--;
+        return;
+    }
+    
+    bool p1_ready = *p[0].pad & BUTTON_1;
+    bool p2_ready = *p[1].pad & BUTTON_1;
+    
+    *DRAW_COLORS = 3 + t/6%2;
+
+    if (p1_ready) {
+        text("P1 ready", SCREEN_SIZE/2-4*FONT_SIZE, SCREEN_SIZE-FONT_SIZE);
+    }
+    if (p2_ready) {
+        text("P2 ready", SCREEN_SIZE/2-4*FONT_SIZE, SCREEN_SIZE-FONT_SIZE);
+    }
+
+    bool button_clicked = false;
+
+    if (*MOUSE_BUTTONS & MOUSE_LEFT) {
+    	uint32_t mx = (uint32_t) *MOUSE_X;
+    	uint32_t my = (uint32_t) *MOUSE_Y;
+
+    	button_clicked = mx > start_button_X &&
+    		         mx < start_button_X + button_width &&
+    		         my > start_button_Y &&
+    		         my < start_button_Y + start_buttonHeight;
+    }
+    
+
+    if ((p1_ready && p2_ready) || button_clicked) {
+        play_palette();
         state = PLAY;
     }
 }
@@ -624,7 +687,11 @@ void update_end() {
     text("wins!", 80-20, 80+12);
     draw_players();
 
-    if (global_delay == 0 && *p[0].pad & BUTTON_1 && *p[1].pad & BUTTON_1) {
+    if (global_delay > 0) {
+        global_delay--;
+        return;
+    } else if (*p[0].pad & BUTTON_1 && *p[1].pad & BUTTON_1) {
+        global_delay = START_DELAY;
         start();
     }
 }
