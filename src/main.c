@@ -684,8 +684,6 @@ void update_play() {
     *DRAW_COLORS = 0x20;
     draw_bg();
     
-    *DRAW_COLORS = 2 + t/4%3;
-    text("Fight!", 80-24, 80-4);
     update_players();
     update_asteroids();
     draw_players();
@@ -715,6 +713,9 @@ void update_end() {
         } else {
             *DRAW_COLORS = 0x4320;
         }
+        if (rand()%20 == 0) {
+            spawn_blast((uint8_t)(rand()%SCREEN_SIZE), (uint8_t)(rand()%SCREEN_SIZE), winner);
+        }
     }
 
     blit(end_screen, 0, 0, end_screenWidth, end_screenHeight, end_screenFlags);
@@ -722,14 +723,9 @@ void update_end() {
     *DRAW_COLORS = 0x40;
     draw_end_name(false);
 
-    /*
-    *DRAW_COLORS = t/4%2 ? winner+3 : 2;
-    text("Player", 80-24, 80-12);
-    text(winner == 0 ? "1" : "2", 80-4, 80);
-    text("wins!", 80-20, 80+12);
-    draw_players();
-    */
-    
+    *DRAW_COLORS = 0x4320;
+    update_blasts();
+
     if (global_delay > 0) {
         global_delay--;
     } else if (*MOUSE_BUTTONS & MOUSE_LEFT ||
