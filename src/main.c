@@ -77,6 +77,16 @@
 #define SHOOT_BULLETS_FRAMES 6
 #define SHOOT_BULLETS_ORDER 2
 
+#define LASER_CHARGE 188
+#define LASER_UNLOAD 42
+#define LASER_TIMEOUT (60 + LASER_UNLOAD)
+#define LASER_CHARGE_FRAMES 11
+#define LASER_FRAMES 5
+#define LASER_BEAM_WIDTH (laserWidth/LASER_FRAMES)
+#define LASER_BEAM_DMG_WIDTH 9
+#define LASER_OFFSET (P_Y_MARGIN+6)
+#define LASER_DMG 1
+
 
 const char* digits[] = {
     "0", "1", "2", "3", "4",
@@ -100,6 +110,20 @@ void srand(unsigned int seed)
 
 
 
+struct item {
+    bool active;
+    uint8_t x, y;
+    enum itemtype {HEAL, ARC, FIRERATE, LASER, SPEED} type;
+} items[MAX_ITEMS];
+
+const uint8_t * item_sprite[] = {
+    [HEAL] = heal,
+    [ARC] = upgrade_arc,
+    [FIRERATE] = upgrade_firerate,
+    [LASER] = upgrade_laser,
+    [SPEED] = upgrade_speed,
+};
+
 struct player {
     uint8_t id;
     const uint8_t *pad;
@@ -118,7 +142,12 @@ struct player {
         float y[SCREEN_SIZE];
         uint8_t x[SCREEN_SIZE];
         bool fire;
-    } bullet;
+    } bullet; 
+    struct {
+        uint8_t charge;
+        uint8_t unload;
+        uint8_t timeout;
+    } laser;
 } p[2], template = {
     .x = SCREEN_SIZE/2,
     .life = 64,
@@ -126,6 +155,7 @@ struct player {
     .bullet.speed = 1,
     .bullet.rate  = 60,
     .bullet.damage = 3,
+    //.upgrades[LASER] = 1,
 };
 
 struct asteroid {
@@ -149,20 +179,6 @@ struct blast {
     int author;
     uint8_t x, y;
 } blasts[MAX_BLASTS];
-
-struct item {
-    bool active;
-    uint8_t x, y;
-    enum itemtype {HEAL, ARC, FIRERATE, LASER, SPEED} type;
-} items[MAX_ITEMS];
-
-const uint8_t * item_sprite[] = {
-    [HEAL] = heal,
-    [ARC] = upgrade_arc,
-    [FIRERATE] = upgrade_firerate,
-    [LASER] = upgrade_laser,
-    [SPEED] = upgrade_speed,
-};
 
 enum gamestate {START, PLAY, END} state = START;
 
@@ -300,6 +316,8 @@ void spawn_asteroid(uint8_t x, uint8_t y, int8_t xdir, int8_t ydir, enum astsize
 }
 
 void spawn_blast(uint8_t x, uint8_t y, int author) {
+    tone(60 | (290 << 16), 0x02080808, 0x2020, TONE_NOISE);
+    
     for(int i = 0; i<MAX_BLASTS; i++) {
         if (blasts[i].frame == 0){
             blasts[i].x = x;
@@ -493,6 +511,38 @@ bool check_bullet_collision(int pi, int bi) {
     return false; 
 }
 
+void check_laser_collision(int pi) {
+    uint8_t x = (uint8_t)p[pi].x;
+    if (collision(p[1-pi].x, p[1-pi].y, P_COLL_WIDTH, P_COLL_HEIGHT,
+                  x, SCREEN_SIZE/2, LASER_BEAM_DMG_WIDTH, SCREEN_SIZE)) {
+        damage(1-pi, LASER_DMG);
+    }
+
+    float laser_min_x = x - LASER_BEAM_DMG_WIDTH/2;
+    float laser_max_x = x + LASER_BEAM_DMG_WIDTH/2;
+
+    for(int i = 0; i<MAX_ASTEROIDS ; i++) {
+        if (asteroids[i].active) {
+            float aster_min_x = asteroids[i].x - astero_size[asteroids[i].size]/2.0f;
+            float aster_max_x = asteroids[i].x + astero_size[asteroids[i].size]/2.0f;
+            if (laser_min_x <= aster_max_x && laser_max_x >= aster_min_x) {
+                astero_damage(i, pi, LASER_DMG);
+            }
+        }
+    }
+
+    for(int i = 0; i<MAX_ITEMS ; i++) {
+        if (items[i].active) {
+            if (collision(items[i].x, items[i].y, ITEM_SIZE, ITEM_SIZE,
+                          x, SCREEN_SIZE/2, LASER_BEAM_DMG_WIDTH, SCREEN_SIZE)) {
+                items[i].active = false;
+                get_item(pi, items[i].type);
+            }
+        }
+
+    } 
+}
+
 void update_players() {
 
     for (int i=0 ; i<2 ; i++){
@@ -512,7 +562,9 @@ void update_players() {
             p[i].xdir = 0;
         }
         if (*p[i].pad & BUTTON_1 && !p[i].bullet.timeout) {
-            p[i].bullet.timeout = p[i].bullet.rate; 
+            p[i].bullet.timeout = p[i].bullet.rate;
+
+            tone(890 | (180 << 16), 0x0a00, 70, TONE_MODE3);
 
             int bi = 0;
 
@@ -528,6 +580,38 @@ void update_players() {
 
         if (p[i].bullet.timeout)
             p[i].bullet.timeout--;
+
+
+        if (*p[i].pad & BUTTON_2 && !p[i].laser.timeout && p[i].upgrades[LASER] > 0) {
+            if (!p[i].laser.charge) {
+                //tone(150 | (410 << 16), 0x383d3314, 30, TONE_NOISE); //laser charge
+                tone(150 | (410 << 16), 0x383d3314, 60, TONE_TRIANGLE); //laser charge
+            }
+
+            p[i].laser.charge++;
+
+            if (p[i].laser.charge == LASER_CHARGE) {
+                p[i].upgrades[LASER]--;
+                tone(750 | (60 << 16), 0x0a0f0f, 100, TONE_PULSE2); //laser shoot
+                p[i].laser.charge = 0;
+                p[i].laser.timeout = LASER_TIMEOUT;
+                p[i].laser.unload = LASER_UNLOAD;
+            }
+        } else {
+            p[i].laser.charge = 0; // charge released
+        }
+
+        
+        if (p[i].laser.unload) {
+            p[i].laser.unload--;
+            if(t%2 == 0) { // was OP without
+            	check_laser_collision(i);
+            }
+        }
+
+        if (p[i].laser.timeout)
+            p[i].laser.timeout--;
+
 
         for(int ai = 0; ai<MAX_ASTEROIDS ; ai++) {
             if (asteroids[ai].active) {
@@ -667,6 +751,28 @@ void draw_ship(struct player p) {
                 shoot_bullet_animWidth,
                 shoot_bullet_animFlags | xflip | p.drawflags); 
     }
+
+    if (p.laser.charge) {
+        int laser_charge_frame = (p.laser.charge*LASER_CHARGE_FRAMES) / LASER_CHARGE;
+        blitSub(shoot_laser_anim,
+                p.x - P_SIZE/2, p.y - P_SIZE/2,
+                P_SIZE, P_SIZE,
+                (uint32_t)(P_SIZE*laser_charge_frame),
+                (sprite_idx>0 ? 1: 0) * P_SIZE,
+                shoot_laser_animWidth,
+                shoot_laser_animFlags | xflip | p.drawflags);
+    }
+
+    if (p.laser.unload) {
+        int laser_frame = p.laser.unload % LASER_FRAMES;
+        blitSub(laser,
+                p.x - LASER_BEAM_WIDTH/2, LASER_OFFSET * p.bullet.dir,
+                LASER_BEAM_WIDTH, laserHeight,
+                (uint32_t)(LASER_BEAM_WIDTH * laser_frame), 0,
+                laserWidth,
+                laserFlags | xflip | p.drawflags);
+        
+    }
 }
 
 void draw_players() {
@@ -744,6 +850,9 @@ void update_start() {
     
 
     if ((p1_ready && p2_ready) || button_clicked) {
+        //tone(262, 60 | (30 << 8), 100, TONE_PULSE1);
+
+        //tone(60 | (290 << 16), 0x020f0f08, 100, TONE_PULSE1);
         play_palette();
         state = PLAY;
     }
