@@ -148,7 +148,7 @@ struct player {
         uint8_t unload;
         uint8_t timeout;
     } laser;
-} p[2], template = {
+} player[2], template = {
     .x = SCREEN_SIZE/2,
     .life = 64,
     .speed = 1.0f,
@@ -194,18 +194,18 @@ uint8_t player2color(struct player p) {
 }
 
 void reset_players(void) {
-    p[0] = p[1] = template;
+    player[0] = player[1] = template;
 
-    p[0].id = 0;
-    p[0].pad = GAMEPAD1;
-    p[0].y   = P_Y_MARGIN;
-    p[0].bullet.dir = 1;
-    p[0].drawflags = BLIT_FLIP_Y;
+    player[0].id = 0;
+    player[0].pad = GAMEPAD1;
+    player[0].y   = P_Y_MARGIN;
+    player[0].bullet.dir = 1;
+    player[0].drawflags = BLIT_FLIP_Y;
 
-    p[1].id = 1;
-    p[1].pad = GAMEPAD2;
-    p[1].y   = SCREEN_SIZE - P_Y_MARGIN;
-    p[1].bullet.dir = -1;
+    player[1].id = 1;
+    player[1].pad = GAMEPAD2;
+    player[1].y   = SCREEN_SIZE - P_Y_MARGIN;
+    player[1].bullet.dir = -1;
 }
 
 void start_palette(void){
@@ -257,10 +257,10 @@ bool collision(int x1, int y1, int w1, int h1, int x2, int y2, int w2, int h2) {
 }
 
 void damage(int id, uint8_t damage) {
-    if (p[id].life > damage) {
-        p[id].life -= damage;
+    if (player[id].life > damage) {
+        player[id].life -= damage;
     } else {
-        p[id].life = 0;
+        player[id].life = 0;
         winner = (uint8_t) (1-id);
         global_delay = END_DELAY;
         end_palette();
@@ -433,7 +433,7 @@ void update_blasts(void) {
     for(int i = 0; i<MAX_BLASTS; i++) {
         if (blasts[i].frame != 0){
             blasts[i].frame--;
-            set_sprite_colors(p[blasts[i].author]);
+            set_sprite_colors(player[blasts[i].author]);
             blitSub(blast,
                     blasts[i].x - blastHeight/2, blasts[i].y - blastHeight/2,
                     blastHeight, blastHeight,
@@ -446,41 +446,41 @@ void update_blasts(void) {
 void get_item(int pi, enum itemtype type) {
     switch (type) {
         case HEAL:
-            p[pi].life += HEAL_ADD;
+            player[pi].life += HEAL_ADD;
             break;
         case FIRERATE:
-            //if(p[pi].bullet.rate > MIN_FIRERATE) {
-            if (p[pi].upgrades[FIRERATE] <= MAX_FIRERATE) {
-                p[pi].bullet.rate -= 3;
-                p[pi].upgrades[FIRERATE]++;
+            //if(player[pi].bullet.rate > MIN_FIRERATE) {
+            if (player[pi].upgrades[FIRERATE] <= MAX_FIRERATE) {
+                player[pi].bullet.rate -= 3;
+                player[pi].upgrades[FIRERATE]++;
             } 
             break;
         case LASER:
-            if (p[pi].upgrades[LASER] <= MAX_LASER) {
-                p[pi].upgrades[LASER]++;
+            if (player[pi].upgrades[LASER] <= MAX_LASER) {
+                player[pi].upgrades[LASER]++;
             }
             break;
         case SPEED:
-            //if(p[pi].bullet.speed < MAX_BULLET_SPEED) {
-            if (p[pi].upgrades[SPEED] <= MAX_SPEED) {
-                p[pi].bullet.speed += SPEED_INC; 
-                p[pi].upgrades[SPEED]++;
+            //if(player[pi].bullet.speed < MAX_BULLET_SPEED) {
+            if (player[pi].upgrades[SPEED] <= MAX_SPEED) {
+                player[pi].bullet.speed += SPEED_INC; 
+                player[pi].upgrades[SPEED]++;
             }
             break;
         case ARC: // not implmented
-            if (p[pi].upgrades[ARC] <= MAX_ARC) {
-                p[pi].upgrades[ARC]++;
+            if (player[pi].upgrades[ARC] <= MAX_ARC) {
+                player[pi].upgrades[ARC]++;
             }
             break;
     } 
 }
 
 bool check_bullet_collision(int pi, int bi) {
-    uint8_t *bx = &p[pi].bullet.x[bi];
-    float *by = &p[pi].bullet.y[bi];
-    if (collision(p[1-pi].x, p[1-pi].y, P_COLL_WIDTH, P_COLL_HEIGHT,
+    uint8_t *bx = &player[pi].bullet.x[bi];
+    float *by = &player[pi].bullet.y[bi];
+    if (collision(player[1-pi].x, player[1-pi].y, P_COLL_WIDTH, P_COLL_HEIGHT,
                   *bx, (uint8_t)*by, bulletWidth, bulletHeight)) {
-        damage(1-pi, p[pi].bullet.damage);
+        damage(1-pi, player[pi].bullet.damage);
 
         return true;
     }
@@ -493,7 +493,7 @@ bool check_bullet_collision(int pi, int bi) {
                 *bx, (uint8_t)*by,
                 bulletWidth/2.0f
             )) {
-                astero_damage(i, pi, p[pi].bullet.damage);
+                astero_damage(i, pi, player[pi].bullet.damage);
                 return true;
             }
         }
@@ -515,8 +515,8 @@ bool check_bullet_collision(int pi, int bi) {
 }
 
 void check_laser_collision(int pi) {
-    uint8_t x = (uint8_t)p[pi].x;
-    if (collision(p[1-pi].x, p[1-pi].y, P_COLL_WIDTH, P_COLL_HEIGHT,
+    uint8_t x = (uint8_t)player[pi].x;
+    if (collision(player[1-pi].x, player[1-pi].y, P_COLL_WIDTH, P_COLL_HEIGHT,
                   x, SCREEN_SIZE/2, LASER_BEAM_DMG_WIDTH, SCREEN_SIZE)) {
         damage(1-pi, LASER_DMG);
     }
@@ -549,71 +549,71 @@ void check_laser_collision(int pi) {
 void update_players(void) {
 
     for (int i=0 ; i<2 ; i++){
-        if (*p[i].pad & BUTTON_LEFT) {
-            p[i].x -= p[i].speed;
-            if (p[i].x - P_COLL_WIDTH/2 < 0)
-                p[i].x = P_COLL_WIDTH/2;
-            if (p[i].xdir < 2)
-                p[i].xdir++;
-        } else if (*p[i].pad & BUTTON_RIGHT) {
-            p[i].x += p[i].speed;
-            if (p[i].x + P_COLL_WIDTH/2 > SCREEN_SIZE)
-                p[i].x = SCREEN_SIZE - P_COLL_WIDTH/2;
-            if (p[i].xdir > -2)
-                p[i].xdir--;
+        if (*player[i].pad & BUTTON_LEFT) {
+            player[i].x -= player[i].speed;
+            if (player[i].x - P_COLL_WIDTH/2 < 0)
+                player[i].x = P_COLL_WIDTH/2;
+            if (player[i].xdir < 2)
+                player[i].xdir++;
+        } else if (*player[i].pad & BUTTON_RIGHT) {
+            player[i].x += player[i].speed;
+            if (player[i].x + P_COLL_WIDTH/2 > SCREEN_SIZE)
+                player[i].x = SCREEN_SIZE - P_COLL_WIDTH/2;
+            if (player[i].xdir > -2)
+                player[i].xdir--;
         } else {
-            p[i].xdir = 0;
+            player[i].xdir = 0;
         }
-        if (*p[i].pad & BUTTON_1 && !p[i].bullet.timeout) {
-            p[i].bullet.timeout = p[i].bullet.rate;
+        if (*player[i].pad & BUTTON_1 && !player[i].bullet.timeout) {
+            player[i].bullet.timeout = player[i].bullet.rate;
 
             tone(890 | (180 << 16), 0x0a00, 70, TONE_MODE3);
 
             int bi = 0;
 
             for (int j = 0 ; j<2 ; j++) {
-                bi = next_free(p[i].bullet.y, sizeof(p[i].bullet.y), bi);
+                bi = next_free(player[i].bullet.y, sizeof(player[i].bullet.y), bi);
                 if (bi >= 0) {
-                    p[i].bullet.y[bi] = (uint8_t) (p[i].y + CANON_Y_OFFSET/2 * p[i].bullet.dir);
-                    p[i].bullet.x[bi] = (uint8_t) (p[i].x - CANON_X_OFFSET + CANON_X_OFFSET*2*j);
+                    player[i].bullet.y[bi] = (uint8_t) (player[i].y + CANON_Y_OFFSET/2 * player[i].bullet.dir);
+                    player[i].bullet.x[bi] = (uint8_t) (player[i].x - CANON_X_OFFSET + CANON_X_OFFSET*2*j);
                 }
             }
              
         }
 
-        if (p[i].bullet.timeout)
-            p[i].bullet.timeout--;
+        if (player[i].bullet.timeout)
+            player[i].bullet.timeout--;
 
 
-        if (*p[i].pad & BUTTON_2 && !p[i].laser.timeout && p[i].upgrades[LASER] > 0) {
-            if (!p[i].laser.charge) {
+        if (*player[i].pad & BUTTON_2 && !player[i].laser.timeout && player[i].upgrades[LASER] > 0) {
+            if (!player[i].laser.charge) {
                 //tone(150 | (410 << 16), 0x383d3314, 30, TONE_NOISE); //laser charge
                 tone(150 | (410 << 16), 0x383d3314, 60, TONE_TRIANGLE); //laser charge
             }
 
-            p[i].laser.charge++;
+            player[i].laser.charge++;
 
-            if (p[i].laser.charge == LASER_CHARGE) {
-                p[i].upgrades[LASER]--;
+            if (player[i].laser.charge == LASER_CHARGE) {
+                player[i].upgrades[LASER]--;
                 tone(750 | (60 << 16), 0x0a0f0f, 100, TONE_PULSE2); //laser shoot
-                p[i].laser.charge = 0;
-                p[i].laser.timeout = LASER_TIMEOUT;
-                p[i].laser.unload = LASER_UNLOAD;
+                player[i].laser.charge = 0;
+                player[i].laser.timeout = LASER_TIMEOUT;
+                player[i].laser.unload = LASER_UNLOAD;
             }
         } else {
-            p[i].laser.charge = 0; // charge released
+            player[i].laser.charge = 0; // charge released
         }
 
         
-        if (p[i].laser.unload) {
-            p[i].laser.unload--;
+        if (player[i].laser.unload) {
+            player[i].laser.unload--;
             if(t%2 == 0) { // was OP without
             	check_laser_collision(i);
             }
         }
 
-        if (p[i].laser.timeout)
-            p[i].laser.timeout--;
+        if (player[i].laser.timeout)
+            player[i].laser.timeout--;
 
 
         for(int ai = 0; ai<MAX_ASTEROIDS ; ai++) {
@@ -621,8 +621,8 @@ void update_players(void) {
                 if (astero_collision(
                     asteroids[ai].x, asteroids[ai].y,
                     astero_size[asteroids[ai].size]/2.0f,
-                    p[i].x,
-                    p[i].y,
+                    player[i].x,
+                    player[i].y,
                     P_COLL_WIDTH/2
                 )) {
                     astero_damage(ai, i, asteroids[ai].life);
@@ -634,7 +634,7 @@ void update_players(void) {
         for(int ii = 0; ii<MAX_ITEMS ; ii++) {
             if (items[ii].active) {
                 if (collision(items[ii].x, items[ii].y, ITEM_SIZE, ITEM_SIZE,
-                              p[i].x, p[i].y, P_COLL_WIDTH, P_COLL_HEIGHT)) {
+                              player[i].x, player[i].y, P_COLL_WIDTH, P_COLL_HEIGHT)) {
                     items[ii].active = false;
                     get_item(i, items[ii].type);
                 }
@@ -642,26 +642,26 @@ void update_players(void) {
         }
         
         for (int j = 0 ; j < SCREEN_SIZE ; j++) {
-            uint8_t *bx = &p[i].bullet.x[j];
-            float *by = &p[i].bullet.y[j];
+            uint8_t *bx = &player[i].bullet.x[j];
+            float *by = &player[i].bullet.y[j];
             if (*by != 0) {
                 if (*by < 0 || *by > SCREEN_SIZE) {
                     *by = 0;
                 } else {
                     if (check_bullet_collision(i,j)) {
-        		*DRAW_COLORS = player2color(p[i]);
+        		*DRAW_COLORS = player2color(player[i]);
 
         		spawn_blast(*bx, (uint8_t)*by, i);
                         //oval(*bx-EXPLO_SIZE/2, *by-EXPLO_SIZE/2, EXPLO_SIZE, EXPLO_SIZE);
                         *by = 0;
 
                     } else {
-                        *by += p[i].bullet.speed * p[i].bullet.dir;
-                        set_sprite_colors(p[i]);
+                        *by += player[i].bullet.speed * player[i].bullet.dir;
+                        set_sprite_colors(player[i]);
                         blit(bullet,
                              *bx-bulletWidth/2, (uint8_t)*by - bulletHeight/2,
                              bulletWidth, bulletHeight,
-                             bulletFlags|(p[i].bullet.dir>0?0:BLIT_FLIP_Y));
+                             bulletFlags|(player[i].bullet.dir>0?0:BLIT_FLIP_Y));
                     }
                 }
             }               
@@ -780,8 +780,8 @@ void draw_ship(struct player p) {
 
 void draw_players(void) {
     for (int i=0 ; i<2 ; i++){
-        draw_bar(p[i]);
-        draw_ship(p[i]);
+        draw_bar(player[i]);
+        draw_ship(player[i]);
     } 
 }
 
@@ -827,8 +827,8 @@ void update_start(void) {
         return;
     }
     
-    bool p1_ready = *p[0].pad & BUTTON_1;
-    bool p2_ready = *p[1].pad & BUTTON_1;
+    bool p1_ready = *player[0].pad & BUTTON_1;
+    bool p2_ready = *player[1].pad & BUTTON_1;
 
     *DRAW_COLORS = 3 + t/6%2;
 
@@ -885,7 +885,7 @@ void update_end(void) {
    
     *DRAW_COLORS = 0x4320;
 
-    if(*p[winner].pad & BUTTON_1) {
+    if(*player[winner].pad & BUTTON_1) {
         *DRAW_COLORS = 0x40;
         draw_bg();
         if (t/4%2) {
@@ -911,7 +911,7 @@ void update_end(void) {
     if (global_delay > 0) {
         global_delay--;
     } else if (*MOUSE_BUTTONS & MOUSE_LEFT ||
-               (*p[0].pad & BUTTON_1 && *p[1].pad & BUTTON_1)) {
+               (*player[0].pad & BUTTON_1 && *player[1].pad & BUTTON_1)) {
         global_delay = START_DELAY;
         start();
     }
