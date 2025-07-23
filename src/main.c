@@ -273,7 +273,7 @@ static void damage(int id, uint8_t damage) {
 }
 
 static int next_free(const float *array, int length, int start) {
-    while (start < length && array[start] != 0)
+    while (start < length && (fabsf(array[start]) > 1e-6f))
         start++;
     if (start >= length)
         start = -1;
