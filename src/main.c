@@ -97,18 +97,11 @@ const char* digits[] = {
 
 static unsigned long int nextrand = 1;
 
-int rand(void) // RAND_MAX assumed to be 32767
+static int rand(void) // RAND_MAX assumed to be 32767
 {
     nextrand = nextrand * 1103515245 + 12345;
     return (unsigned int)(nextrand/65536) % 32768;
 }
-
-void srand(unsigned int seed)
-{
-    nextrand = seed;
-}
-
-
 
 struct item {
     bool active;
@@ -189,11 +182,11 @@ int global_delay = 0;
 
 int asteroid_spawn_delay = 0;
 
-uint8_t player2color(struct player p) {
+static uint8_t player2color(struct player p) {
     return p.id ? 4 : 3;
 }
 
-void reset_players(void) {
+static void reset_players(void) {
     player[0] = player[1] = template;
 
     player[0].id = 0;
@@ -208,55 +201,55 @@ void reset_players(void) {
     player[1].bullet.dir = -1;
 }
 
-void start_palette(void){
+static void start_palette(void){
     PALETTE[0] = 0x0;
     PALETTE[1] = 0xffffff;
     PALETTE[2] = 0xe92f2f;
     PALETTE[3] = 0xf6c515;
 }
 
-void play_palette(void){
+static void play_palette(void){
     PALETTE[0] = 0x0;
     PALETTE[1] = 0xffffff;
     PALETTE[2] = 0x0000ff;
     PALETTE[3] = 0xff0000;
 }
 
-void end_palette(void){
+static void end_palette(void){
     PALETTE[0] = 0x0;
     PALETTE[1] = 0xffffff;
     PALETTE[2] = 0x7d7d7d;
     PALETTE[3] = (winner == 0) ? 0x0000ff : 0xff0000;
 }
 
-void reset_asteroids(void){
+static void reset_asteroids(void){
     for (int i = 0 ; i<MAX_ASTEROIDS ; i++) {
         asteroids[i] = (struct asteroid){0};
     }
 }
-void reset_blasts(void){
+static void reset_blasts(void){
     for (int i = 0 ; i<MAX_BLASTS ; i++) {
         blasts[i] = (struct blast){0};
     }
 }
 
-void reset_items(void){
+static void reset_items(void){
     for (int i = 0 ; i<MAX_ITEMS ; i++) {
         items[i] = (struct item){0};
     }
 }
 
-void set_sprite_colors(struct player p) {
+static void set_sprite_colors(struct player p) {
     *DRAW_COLORS = (uint16_t)(player2color(p) << 12) | 0x20; 
 }
 
 
-bool collision(int x1, int y1, int w1, int h1, int x2, int y2, int w2, int h2) {
+static bool collision(int x1, int y1, int w1, int h1, int x2, int y2, int w2, int h2) {
     return (x1 + w1/2 >= x2 - w2/2 && x1 - w1/2 <= x2 + w2/2 &&
             y1 + h1/2 >= y2 - h2/2 && y1 - h1/2 <= y2 + h2/2);
 }
 
-void damage(int id, uint8_t damage) {
+static void damage(int id, uint8_t damage) {
     if (player[id].life > damage) {
         player[id].life -= damage;
     } else {
@@ -268,7 +261,7 @@ void damage(int id, uint8_t damage) {
     }
 }
 
-int next_free(float *array, int length, int start) {
+static int next_free(float *array, int length, int start) {
     while (start<length && array[start] != 0)
         start++;
     if (start >= length)
@@ -286,11 +279,11 @@ void start(void) {
     state = START;
 }
 
-float rand_ast_var(void) {
+static float rand_ast_var(void) {
     return ((float)(rand() % ASTERO_RESOLUTION - ASTERO_RESOLUTION/2)*ASTERO_SPEED_VAR*2)/ASTERO_RESOLUTION;
 }
 
-void spawn_asteroid(uint8_t x, uint8_t y, int8_t xdir, int8_t ydir, enum astsize size){
+static void spawn_asteroid(uint8_t x, uint8_t y, int8_t xdir, int8_t ydir, enum astsize size){
     for(int i = 0; i<MAX_ASTEROIDS ; i++) {
         if (!asteroids[i].active) {
             asteroids[i].active = true;
@@ -315,7 +308,7 @@ void spawn_asteroid(uint8_t x, uint8_t y, int8_t xdir, int8_t ydir, enum astsize
     }
 }
 
-void spawn_blast(uint8_t x, uint8_t y, int author) {
+static void spawn_blast(uint8_t x, uint8_t y, int author) {
     tone(60 | (290 << 16), 0x02080808, 0x2020, TONE_NOISE);
     
     for(int i = 0; i<MAX_BLASTS; i++) {
@@ -329,7 +322,7 @@ void spawn_blast(uint8_t x, uint8_t y, int author) {
     }
 }
 
-void spawn_item(uint8_t x, uint8_t y) {
+static void spawn_item(uint8_t x, uint8_t y) {
     for(int i = 0; i<MAX_ITEMS; i++) {
         if (!items[i].active){
             items[i].active = true;
@@ -346,7 +339,7 @@ void spawn_item(uint8_t x, uint8_t y) {
 
 
 
-void show_asteroid(struct asteroid a) {
+static void show_asteroid(struct asteroid a) {
     uint8_t size = astero_size[a.size];
     const uint8_t* data = asteroid;
     uint32_t stride = asteroidWidth;
@@ -372,7 +365,7 @@ void show_asteroid(struct asteroid a) {
             BLIT_2BPP|a.flip_flags);
 }
 
-bool astero_collision(float x1, float y1, float r1, float x2, float y2, float r2) {
+static bool astero_collision(float x1, float y1, float r1, float x2, float y2, float r2) {
     float dx = x1-x2;
     float dy = y1-y2;
     float dist = r1+r2;
@@ -380,7 +373,7 @@ bool astero_collision(float x1, float y1, float r1, float x2, float y2, float r2
     return dx*dx + dy*dy < dist*dist;
 }
 
-void astero_damage(int ai, int pi, uint8_t damage) {
+static void astero_damage(int ai, int pi, uint8_t damage) {
     if (asteroids[ai].life > damage) {
         asteroids[ai].life -= damage;
     } else {
@@ -403,7 +396,7 @@ void astero_damage(int ai, int pi, uint8_t damage) {
 }
 
 
-void update_asteroids(void) {
+static void update_asteroids(void) {
     if (asteroid_spawn_delay <= 0) {
         asteroid_spawn_delay = ASTERO_TIMER_MIN + rand()&ASTERO_TIMER_MASK;
         int8_t xdir = rand()%2 ? -1:1;
@@ -429,7 +422,7 @@ void update_asteroids(void) {
     }
 }
 
-void update_blasts(void) {
+static void update_blasts(void) {
     for(int i = 0; i<MAX_BLASTS; i++) {
         if (blasts[i].frame != 0){
             blasts[i].frame--;
@@ -443,7 +436,7 @@ void update_blasts(void) {
     }
 }
 
-void get_item(int pi, enum itemtype type) {
+static void get_item(int pi, enum itemtype type) {
     switch (type) {
         case HEAL:
             player[pi].life += HEAL_ADD;
@@ -475,7 +468,7 @@ void get_item(int pi, enum itemtype type) {
     } 
 }
 
-bool check_bullet_collision(int pi, int bi) {
+static bool check_bullet_collision(int pi, int bi) {
     uint8_t *bx = &player[pi].bullet.x[bi];
     float *by = &player[pi].bullet.y[bi];
     if (collision(player[1-pi].x, player[1-pi].y, P_COLL_WIDTH, P_COLL_HEIGHT,
@@ -514,7 +507,7 @@ bool check_bullet_collision(int pi, int bi) {
     return false; 
 }
 
-void check_laser_collision(int pi) {
+static void check_laser_collision(int pi) {
     uint8_t x = (uint8_t)player[pi].x;
     if (collision(player[1-pi].x, player[1-pi].y, P_COLL_WIDTH, P_COLL_HEIGHT,
                   x, SCREEN_SIZE/2, LASER_BEAM_DMG_WIDTH, SCREEN_SIZE)) {
@@ -546,7 +539,7 @@ void check_laser_collision(int pi) {
     } 
 }
 
-void update_players(void) {
+static void update_players(void) {
 
     for (int i=0 ; i<2 ; i++){
         if (*player[i].pad & BUTTON_LEFT) {
@@ -669,7 +662,7 @@ void update_players(void) {
     } 
 }
 
-void update_items(void) {
+static void update_items(void) {
     for (int i=0; i<MAX_ITEMS ; i++) {
         if (items[i].active) { 
             *DRAW_COLORS = (uint16_t)((2 + (t/4+items[i].type)%3)<<4);
@@ -682,7 +675,7 @@ void update_items(void) {
     }
 }
 
-void draw_bar(struct player p) {
+static void draw_bar(struct player p) {
     uint8_t x = 0;
     uint8_t y = (p.id == 0) ? 0 : SCREEN_SIZE - BAR_SIZE; 
 
@@ -715,7 +708,7 @@ void draw_bar(struct player p) {
 }
     
 
-void blit_ship(struct player p, const uint8_t* sprite, int sprite_idx, uint32_t stride, uint32_t flags) {
+static void blit_ship(struct player p, const uint8_t* sprite, int sprite_idx, uint32_t stride, uint32_t flags) {
     blitSub(sprite, 
             p.x - P_SIZE/2, p.y - P_SIZE/2,
             P_SIZE, P_SIZE,
@@ -725,7 +718,7 @@ void blit_ship(struct player p, const uint8_t* sprite, int sprite_idx, uint32_t 
     
 }
 
-void draw_ship(struct player p) {
+static void draw_ship(struct player p) {
 
     uint8_t xflip = 0;
 
@@ -778,14 +771,14 @@ void draw_ship(struct player p) {
     }
 }
 
-void draw_players(void) {
+static void draw_players(void) {
     for (int i=0 ; i<2 ; i++){
         draw_bar(player[i]);
         draw_ship(player[i]);
     } 
 }
 
-void draw_bg(void) {
+static void draw_bg(void) {
 
     float pi_t = (float)(t*M_PI*2/1024);
 
@@ -798,7 +791,7 @@ void draw_bg(void) {
     //blit(bg, y, x, bgWidth, bgHeight, bgFlags | BLIT_FLIP_Y);
 }
 
-void update_start(void) {
+static void update_start(void) {
     //draw_bg();
 
     *DRAW_COLORS = 0x4320;
@@ -861,7 +854,7 @@ void update_start(void) {
     }
 }
 
-void update_play(void) {
+static void update_play(void) {
 
     *DRAW_COLORS = 0x20;
     draw_bg();
@@ -873,7 +866,7 @@ void update_play(void) {
     update_items();
 }
 
-void draw_end_name(bool randoffset) {
+static void draw_end_name(bool randoffset) {
     blitSub(end_name,
             end_nameX + (randoffset ? rand()%5-2 : 0),
             end_nameY + (randoffset ? rand()%5-2 : 0),
@@ -881,7 +874,7 @@ void draw_end_name(bool randoffset) {
             0, (1-winner)*end_nameHeight/2, end_nameWidth, end_nameFlags);
 }
 
-void update_end(void) {
+static void update_end(void) {
    
     *DRAW_COLORS = 0x4320;
 
