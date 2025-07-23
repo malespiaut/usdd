@@ -134,7 +134,6 @@ struct player {
         uint8_t damage;
         float y[SCREEN_SIZE];
         uint8_t x[SCREEN_SIZE];
-        bool fire;
     } bullet; 
     struct {
         uint8_t charge;
