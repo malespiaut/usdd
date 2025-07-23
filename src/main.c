@@ -636,7 +636,7 @@ static void update_players(void) {
         for (int j = 0; j < SCREEN_SIZE; j++) {
             const uint8_t *bx = &player[i].bullet.x[j];
             float *by = &player[i].bullet.y[j];
-            if (*by != 0) {
+            if (fabsf(*by) > 1e-6f) {
                 if (*by < 0 || *by > SCREEN_SIZE) {
                     *by = 0;
                 } else {
