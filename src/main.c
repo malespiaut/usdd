@@ -470,6 +470,8 @@ static void get_item(int pi, enum itemtype type) {
                 player[pi].upgrades[ARC]++;
             }
             break;
+        default:
+            break;
     }
 }
 
@@ -909,6 +911,8 @@ void update(void) {
             break;
         case END:
             update_end();
+            break;
+        default:
             break;
     }
 }
