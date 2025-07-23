@@ -912,7 +912,7 @@ static void update_end(void) {
 
 void update (void) {
     t++;
-    rand();
+    (void)rand();
 
     switch (state) {
         case START:
