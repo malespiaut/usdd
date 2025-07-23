@@ -260,7 +260,7 @@ static void damage(int id, uint8_t damage) {
     }
 }
 
-static int next_free(float *array, int length, int start) {
+static int next_free(const float *array, int length, int start) {
     while (start<length && array[start] != 0)
         start++;
     if (start >= length)
@@ -468,8 +468,8 @@ static void get_item(int pi, enum itemtype type) {
 }
 
 static bool check_bullet_collision(int pi, int bi) {
-    uint8_t *bx = &player[pi].bullet.x[bi];
-    float *by = &player[pi].bullet.y[bi];
+    const uint8_t *bx = &player[pi].bullet.x[bi];
+    const float *by = &player[pi].bullet.y[bi];
     if (collision(player[1-pi].x, player[1-pi].y, P_COLL_WIDTH, P_COLL_HEIGHT,
                   *bx, (uint8_t)*by, bulletWidth, bulletHeight)) {
         damage(1-pi, player[pi].bullet.damage);
@@ -634,7 +634,7 @@ static void update_players(void) {
         }
         
         for (int j = 0 ; j < SCREEN_SIZE ; j++) {
-            uint8_t *bx = &player[i].bullet.x[j];
+            const uint8_t *bx = &player[i].bullet.x[j];
             float *by = &player[i].bullet.y[j];
             if (*by != 0) {
                 if (*by < 0 || *by > SCREEN_SIZE) {
