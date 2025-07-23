@@ -1,5 +1,5 @@
-#include <stdbool.h>
 #include <math.h>
+#include <stdbool.h>
 
 #include "wasm4.h"
 
@@ -23,7 +23,6 @@
 
 #define BAR_SIZE 8
 #define BAR_GAP 2
-
 
 #define ASTERO_TIMER_MIN 30
 #define ASTERO_TIMER_MASK 0x7f
@@ -63,7 +62,6 @@
 #define end_nameX 42
 #define end_nameY 30
 
-
 #define MAX_UPGRADE 10
 #define MAX_ARC MAX_UPGRADE
 #define MAX_FIRERATE MAX_UPGRADE
@@ -87,10 +85,17 @@
 #define LASER_OFFSET (P_Y_MARGIN+6)
 #define LASER_DMG 1
 
-
-const char* digits[] = {
-    "0", "1", "2", "3", "4",
-    "5", "6", "7", "8", "9",
+const char *digits[] = {
+    "0",
+    "1",
+    "2",
+    "3",
+    "4",
+    "5",
+    "6",
+    "7",
+    "8",
+    "9",
 };
 
 /* rand() implem from C std */
@@ -100,16 +105,20 @@ static unsigned long int nextrand = 1;
 static int rand(void) // RAND_MAX assumed to be 32767
 {
     nextrand = nextrand * 1103515245 + 12345;
-    return (unsigned int)(nextrand/65536) % 32768;
+    return (unsigned int)(nextrand / 65536) % 32768;
 }
 
 struct item {
     bool active;
     uint8_t x, y;
-    enum itemtype {HEAL, FIRERATE, LASER, SPEED, ARC} type;
+    enum itemtype { HEAL,
+                    FIRERATE,
+                    LASER,
+                    SPEED,
+                    ARC } type;
 } items[MAX_ITEMS];
 
-const uint8_t * item_sprite[] = {
+const uint8_t *item_sprite[] = {
     [HEAL] = heal,
     [FIRERATE] = upgrade_firerate,
     [LASER] = upgrade_laser,
@@ -128,24 +137,24 @@ struct player {
     uint8_t upgrades[NUM_ITEM_TYPES];
     struct {
         float speed;
-        uint8_t rate;    // timeout reset value
+        uint8_t rate; // timeout reset value
         uint8_t timeout;
-        int8_t  dir;
+        int8_t dir;
         uint8_t damage;
         float y[SCREEN_SIZE];
         uint8_t x[SCREEN_SIZE];
-    } bullet; 
+    } bullet;
     struct {
         uint8_t charge;
         uint8_t unload;
         uint8_t timeout;
     } laser;
 } player[2], template = {
-    .x = SCREEN_SIZE/2,
+    .x = SCREEN_SIZE / 2,
     .life = 64,
     .speed = 1.0f,
     .bullet.speed = 1,
-    .bullet.rate  = 60,
+    .bullet.rate = 60,
     .bullet.damage = 3,
     //.upgrades[LASER] = 1,
 };
@@ -157,13 +166,15 @@ struct asteroid {
     uint8_t flip_flags;
     uint8_t life;
     float x, y, dx, dy;
-    enum astsize {MINI, SMALL, FULLSIZE} size;
+    enum astsize { MINI,
+                   SMALL,
+                   FULLSIZE } size;
 } asteroids[MAX_ASTEROIDS];
 
 uint8_t astero_size[] = {
     [MINI] = 5,
     [SMALL] = 10,
-    [FULLSIZE] = 20    
+    [FULLSIZE] = 20
 };
 
 struct blast {
@@ -172,7 +183,10 @@ struct blast {
     uint8_t x, y;
 } blasts[MAX_BLASTS];
 
-enum gamestate {START, PLAY, END} state = START;
+enum gamestate { START,
+                 PLAY,
+                 END } state
+ = START;
 
 uint8_t winner = 0;
 uint32_t t = 0;
@@ -190,62 +204,60 @@ static void reset_players(void) {
 
     player[0].id = 0;
     player[0].pad = GAMEPAD1;
-    player[0].y   = P_Y_MARGIN;
+    player[0].y = P_Y_MARGIN;
     player[0].bullet.dir = 1;
     player[0].drawflags = BLIT_FLIP_Y;
 
     player[1].id = 1;
     player[1].pad = GAMEPAD2;
-    player[1].y   = SCREEN_SIZE - P_Y_MARGIN;
+    player[1].y = SCREEN_SIZE - P_Y_MARGIN;
     player[1].bullet.dir = -1;
 }
 
-static void start_palette(void){
+static void start_palette(void) {
     PALETTE[0] = 0x0;
     PALETTE[1] = 0xffffff;
     PALETTE[2] = 0xe92f2f;
     PALETTE[3] = 0xf6c515;
 }
 
-static void play_palette(void){
+static void play_palette(void) {
     PALETTE[0] = 0x0;
     PALETTE[1] = 0xffffff;
     PALETTE[2] = 0x0000ff;
     PALETTE[3] = 0xff0000;
 }
 
-static void end_palette(void){
+static void end_palette(void) {
     PALETTE[0] = 0x0;
     PALETTE[1] = 0xffffff;
     PALETTE[2] = 0x7d7d7d;
     PALETTE[3] = (winner == 0) ? 0x0000ff : 0xff0000;
 }
 
-static void reset_asteroids(void){
-    for (int i = 0 ; i<MAX_ASTEROIDS ; i++) {
-        asteroids[i] = (struct asteroid){0};
+static void reset_asteroids(void) {
+    for (int i = 0; i < MAX_ASTEROIDS; i++) {
+        asteroids[i] = (struct asteroid){ 0 };
     }
 }
-static void reset_blasts(void){
-    for (int i = 0 ; i<MAX_BLASTS ; i++) {
-        blasts[i] = (struct blast){0};
+static void reset_blasts(void) {
+    for (int i = 0; i < MAX_BLASTS; i++) {
+        blasts[i] = (struct blast){ 0 };
     }
 }
 
-static void reset_items(void){
-    for (int i = 0 ; i<MAX_ITEMS ; i++) {
-        items[i] = (struct item){0};
+static void reset_items(void) {
+    for (int i = 0; i < MAX_ITEMS; i++) {
+        items[i] = (struct item){ 0 };
     }
 }
 
 static void set_sprite_colors(struct player p) {
-    *DRAW_COLORS = (uint16_t)(player2color(p) << 12) | 0x20; 
+    *DRAW_COLORS = (uint16_t)(player2color(p) << 12) | 0x20;
 }
 
-
 static bool collision(int x1, int y1, int w1, int h1, int x2, int y2, int w2, int h2) {
-    return (x1 + w1/2 >= x2 - w2/2 && x1 - w1/2 <= x2 + w2/2 &&
-            y1 + h1/2 >= y2 - h2/2 && y1 - h1/2 <= y2 + h2/2);
+    return (x1 + w1 / 2 >= x2 - w2 / 2 && x1 - w1 / 2 <= x2 + w2 / 2 && y1 + h1 / 2 >= y2 - h2 / 2 && y1 - h1 / 2 <= y2 + h2 / 2);
 }
 
 static void damage(int id, uint8_t damage) {
@@ -253,7 +265,7 @@ static void damage(int id, uint8_t damage) {
         player[id].life -= damage;
     } else {
         player[id].life = 0;
-        winner = (uint8_t) (1-id);
+        winner = (uint8_t)(1 - id);
         global_delay = END_DELAY;
         end_palette();
         state = END;
@@ -261,7 +273,7 @@ static void damage(int id, uint8_t damage) {
 }
 
 static int next_free(const float *array, int length, int start) {
-    while (start<length && array[start] != 0)
+    while (start < length && array[start] != 0)
         start++;
     if (start >= length)
         start = -1;
@@ -279,11 +291,11 @@ void start(void) {
 }
 
 static float rand_ast_var(void) {
-    return ((float)(rand() % ASTERO_RESOLUTION - ASTERO_RESOLUTION/2)*ASTERO_SPEED_VAR*2)/ASTERO_RESOLUTION;
+    return ((float)(rand() % ASTERO_RESOLUTION - ASTERO_RESOLUTION / 2) * ASTERO_SPEED_VAR * 2) / ASTERO_RESOLUTION;
 }
 
-static void spawn_asteroid(uint8_t x, uint8_t y, int8_t xdir, int8_t ydir, enum astsize size){
-    for(int i = 0; i<MAX_ASTEROIDS ; i++) {
+static void spawn_asteroid(uint8_t x, uint8_t y, int8_t xdir, int8_t ydir, enum astsize size) {
+    for (int i = 0; i < MAX_ASTEROIDS; i++) {
         if (!asteroids[i].active) {
             asteroids[i].active = true;
             asteroids[i].size = size;
@@ -291,17 +303,17 @@ static void spawn_asteroid(uint8_t x, uint8_t y, int8_t xdir, int8_t ydir, enum 
             asteroids[i].y = y;
 
             asteroids[i].life = ASTERO_LIFE * (1 + (uint8_t)size);
-            
+
             float xvar = rand_ast_var();
             float yvar = rand_ast_var();
 
-            asteroids[i].dx = xvar + xdir * (ASTERO_SPEED_BASE + (float)(2-size) * ASTERO_SIZE_BOOST);
-            asteroids[i].dy = yvar + ydir * (ASTERO_SPEED_BASE + (float)(2-size) * ASTERO_SIZE_BOOST);
+            asteroids[i].dx = xvar + xdir * (ASTERO_SPEED_BASE + (float)(2 - size) * ASTERO_SIZE_BOOST);
+            asteroids[i].dy = yvar + ydir * (ASTERO_SPEED_BASE + (float)(2 - size) * ASTERO_SIZE_BOOST);
 
             asteroids[i].rand_offset = (uint32_t)rand();
 
-            asteroids[i].flip_flags = (uint8_t)(rand()& (BLIT_FLIP_X|BLIT_FLIP_Y));
-            
+            asteroids[i].flip_flags = (uint8_t)(rand() & (BLIT_FLIP_X | BLIT_FLIP_Y));
+
             return;
         }
     }
@@ -309,67 +321,65 @@ static void spawn_asteroid(uint8_t x, uint8_t y, int8_t xdir, int8_t ydir, enum 
 
 static void spawn_blast(uint8_t x, uint8_t y, int author) {
     tone(60 | (290 << 16), 0x02080808, 0x2020, TONE_NOISE);
-    
-    for(int i = 0; i<MAX_BLASTS; i++) {
-        if (blasts[i].frame == 0){
+
+    for (int i = 0; i < MAX_BLASTS; i++) {
+        if (blasts[i].frame == 0) {
             blasts[i].x = x;
             blasts[i].y = y;
             blasts[i].author = author;
-            blasts[i].frame = (uint8_t)(blastWidth/blastHeight + 1)*BLAST_TIME_SCALE;
+            blasts[i].frame = (uint8_t)(blastWidth / blastHeight + 1) * BLAST_TIME_SCALE;
             return;
         }
     }
 }
 
 static void spawn_item(uint8_t x, uint8_t y) {
-    for(int i = 0; i<MAX_ITEMS; i++) {
-        if (!items[i].active){
+    for (int i = 0; i < MAX_ITEMS; i++) {
+        if (!items[i].active) {
             items[i].active = true;
             items[i].x = x;
             items[i].y = y;
 
-            //items[i].type = (enum itemtype)(rand()%NUM_ITEM_TYPES);
-            // last item (arc) not implemented
-            items[i].type = (enum itemtype)(rand()%NUM_ITEM_TYPES-1);
+            // items[i].type = (enum itemtype)(rand()%NUM_ITEM_TYPES);
+            //  last item (arc) not implemented
+            items[i].type = (enum itemtype)(rand() % NUM_ITEM_TYPES - 1);
             return;
         }
     }
 }
 
-
-
 static void show_asteroid(struct asteroid a) {
     uint8_t size = astero_size[a.size];
-    const uint8_t* data = asteroid;
+    const uint8_t *data = asteroid;
     uint32_t stride = asteroidWidth;
 
     if (a.size == SMALL) {
         data = small_asteroid;
-        stride = small_asteroidWidth; 
+        stride = small_asteroidWidth;
     } else if (a.size == MINI) {
         data = mini_asteroid;
         stride = mini_asteroidWidth;
     }
 
-    uint32_t frame = ((t>>4)+a.rand_offset) % (stride / size);
+    uint32_t frame = ((t >> 4) + a.rand_offset) % (stride / size);
 
     *DRAW_COLORS = 0x21;
 
     blitSub(data,
-            (int32_t) a.x - size/2,
-            (int32_t) a.y - size/2,
+            (int32_t)a.x - size / 2,
+            (int32_t)a.y - size / 2,
             size, size,
             size * frame, 0,
             stride,
-            BLIT_2BPP|a.flip_flags);
+            BLIT_2BPP | a.flip_flags);
 }
 
 static bool astero_collision(float x1, float y1, float r1, float x2, float y2, float r2) {
-    float dx = x1-x2;
-    float dy = y1-y2;
-    float dist = r1+r2;
+    float dx = x1 - x2;
+    float dy = y1 - y2;
+    float dist = r1 + r2;
 
-    return dx*dx + dy*dy < dist*dist;
+    return dx * dx + dy * dy < dist * dist;
 }
 
 static void astero_damage(int ai, int pi, uint8_t damage) {
@@ -379,14 +389,14 @@ static void astero_damage(int ai, int pi, uint8_t damage) {
         asteroids[ai].active = false;
 
         spawn_blast((uint8_t)asteroids[ai].x, (uint8_t)asteroids[ai].y, pi);
-        
+
         int size = (int)asteroids[ai].size;
         uint8_t x = (uint8_t)asteroids[ai].x;
         uint8_t y = (uint8_t)asteroids[ai].y;
 
         if (size > 0) {
-            for(int i=0 ; i<2 ; i++) {
-                spawn_asteroid(x, y, 0, (int8_t)(1-2*pi), (enum astsize) size-1);
+            for (int i = 0; i < 2; i++) {
+                spawn_asteroid(x, y, 0, (int8_t)(1 - 2 * pi), (enum astsize)size - 1);
             }
         } else {
             spawn_item(x, y);
@@ -394,26 +404,22 @@ static void astero_damage(int ai, int pi, uint8_t damage) {
     }
 }
 
-
 static void update_asteroids(void) {
     if (asteroid_spawn_delay <= 0) {
-        asteroid_spawn_delay = ASTERO_TIMER_MIN + rand()&ASTERO_TIMER_MASK;
-        int8_t xdir = rand()%2 ? -1:1;
-        spawn_asteroid(xdir < 0 ? SCREEN_SIZE : 0, SCREEN_SIZE/2, xdir, 0, (enum astsize)(rand()%2+1));
+        asteroid_spawn_delay = ASTERO_TIMER_MIN + rand() & ASTERO_TIMER_MASK;
+        int8_t xdir = rand() % 2 ? -1 : 1;
+        spawn_asteroid(xdir < 0 ? SCREEN_SIZE : 0, SCREEN_SIZE / 2, xdir, 0, (enum astsize)(rand() % 2 + 1));
     } else {
         asteroid_spawn_delay--;
     }
 
-    for(int i = 0; i<MAX_ASTEROIDS ; i++) {
+    for (int i = 0; i < MAX_ASTEROIDS; i++) {
         if (asteroids[i].active) {
             asteroids[i].x += asteroids[i].dx;
             asteroids[i].y += asteroids[i].dy;
 
-            if (asteroids[i].x < -ASTERO_OUT_MARGIN ||
-                asteroids[i].x > SCREEN_SIZE + ASTERO_OUT_MARGIN ||
-                asteroids[i].y < -ASTERO_OUT_MARGIN ||
-                asteroids[i].y > SCREEN_SIZE + ASTERO_OUT_MARGIN) {
-                    asteroids[i].active = false;
+            if (asteroids[i].x < -ASTERO_OUT_MARGIN || asteroids[i].x > SCREEN_SIZE + ASTERO_OUT_MARGIN || asteroids[i].y < -ASTERO_OUT_MARGIN || asteroids[i].y > SCREEN_SIZE + ASTERO_OUT_MARGIN) {
+                asteroids[i].active = false;
             }
 
             show_asteroid(asteroids[i]);
@@ -422,14 +428,14 @@ static void update_asteroids(void) {
 }
 
 static void update_blasts(void) {
-    for(int i = 0; i<MAX_BLASTS; i++) {
-        if (blasts[i].frame != 0){
+    for (int i = 0; i < MAX_BLASTS; i++) {
+        if (blasts[i].frame != 0) {
             blasts[i].frame--;
             set_sprite_colors(player[blasts[i].author]);
             blitSub(blast,
-                    blasts[i].x - blastHeight/2, blasts[i].y - blastHeight/2,
+                    blasts[i].x - blastHeight / 2, blasts[i].y - blastHeight / 2,
                     blastHeight, blastHeight,
-                    blastHeight*(blasts[i].frame/BLAST_TIME_SCALE), 0,
+                    blastHeight * (blasts[i].frame / BLAST_TIME_SCALE), 0,
                     blastWidth, blastFlags);
         }
     }
@@ -441,11 +447,11 @@ static void get_item(int pi, enum itemtype type) {
             player[pi].life += HEAL_ADD;
             break;
         case FIRERATE:
-            //if(player[pi].bullet.rate > MIN_FIRERATE) {
+            // if(player[pi].bullet.rate > MIN_FIRERATE) {
             if (player[pi].upgrades[FIRERATE] <= MAX_FIRERATE) {
                 player[pi].bullet.rate -= 3;
                 player[pi].upgrades[FIRERATE]++;
-            } 
+            }
             break;
         case LASER:
             if (player[pi].upgrades[LASER] <= MAX_LASER) {
@@ -453,9 +459,9 @@ static void get_item(int pi, enum itemtype type) {
             }
             break;
         case SPEED:
-            //if(player[pi].bullet.speed < MAX_BULLET_SPEED) {
+            // if(player[pi].bullet.speed < MAX_BULLET_SPEED) {
             if (player[pi].upgrades[SPEED] <= MAX_SPEED) {
-                player[pi].bullet.speed += SPEED_INC; 
+                player[pi].bullet.speed += SPEED_INC;
                 player[pi].upgrades[SPEED]++;
             }
             break;
@@ -464,34 +470,33 @@ static void get_item(int pi, enum itemtype type) {
                 player[pi].upgrades[ARC]++;
             }
             break;
-    } 
+    }
 }
 
 static bool check_bullet_collision(int pi, int bi) {
     const uint8_t *bx = &player[pi].bullet.x[bi];
     const float *by = &player[pi].bullet.y[bi];
-    if (collision(player[1-pi].x, player[1-pi].y, P_COLL_WIDTH, P_COLL_HEIGHT,
+    if (collision(player[1 - pi].x, player[1 - pi].y, P_COLL_WIDTH, P_COLL_HEIGHT,
                   *bx, (uint8_t)*by, bulletWidth, bulletHeight)) {
-        damage(1-pi, player[pi].bullet.damage);
+        damage(1 - pi, player[pi].bullet.damage);
 
         return true;
     }
 
-    for(int i = 0; i<MAX_ASTEROIDS ; i++) {
+    for (int i = 0; i < MAX_ASTEROIDS; i++) {
         if (asteroids[i].active) {
             if (astero_collision(
-                asteroids[i].x, asteroids[i].y,
-                astero_size[asteroids[i].size]/2.0f,
-                *bx, (uint8_t)*by,
-                bulletWidth/2.0f
-            )) {
+                 asteroids[i].x, asteroids[i].y,
+                 astero_size[asteroids[i].size] / 2.0f,
+                 *bx, (uint8_t)*by,
+                 bulletWidth / 2.0f)) {
                 astero_damage(i, pi, player[pi].bullet.damage);
                 return true;
             }
         }
     }
 
-    for(int i = 0; i<MAX_ITEMS ; i++) {
+    for (int i = 0; i < MAX_ITEMS; i++) {
         if (items[i].active) {
             if (collision(items[i].x, items[i].y, ITEM_SIZE, ITEM_SIZE,
                           *bx, (uint8_t)*by, bulletWidth, bulletHeight)) {
@@ -500,57 +505,55 @@ static bool check_bullet_collision(int pi, int bi) {
                 return true;
             }
         }
-
     }
-    
-    return false; 
+
+    return false;
 }
 
 static void check_laser_collision(int pi) {
     uint8_t x = (uint8_t)player[pi].x;
-    if (collision(player[1-pi].x, player[1-pi].y, P_COLL_WIDTH, P_COLL_HEIGHT,
-                  x, SCREEN_SIZE/2, LASER_BEAM_DMG_WIDTH, SCREEN_SIZE)) {
-        damage(1-pi, LASER_DMG);
+    if (collision(player[1 - pi].x, player[1 - pi].y, P_COLL_WIDTH, P_COLL_HEIGHT,
+                  x, SCREEN_SIZE / 2, LASER_BEAM_DMG_WIDTH, SCREEN_SIZE)) {
+        damage(1 - pi, LASER_DMG);
     }
 
-    float laser_min_x = x - LASER_BEAM_DMG_WIDTH/2;
-    float laser_max_x = x + LASER_BEAM_DMG_WIDTH/2;
+    float laser_min_x = x - LASER_BEAM_DMG_WIDTH / 2;
+    float laser_max_x = x + LASER_BEAM_DMG_WIDTH / 2;
 
-    for(int i = 0; i<MAX_ASTEROIDS ; i++) {
+    for (int i = 0; i < MAX_ASTEROIDS; i++) {
         if (asteroids[i].active) {
-            float aster_min_x = asteroids[i].x - astero_size[asteroids[i].size]/2.0f;
-            float aster_max_x = asteroids[i].x + astero_size[asteroids[i].size]/2.0f;
+            float aster_min_x = asteroids[i].x - astero_size[asteroids[i].size] / 2.0f;
+            float aster_max_x = asteroids[i].x + astero_size[asteroids[i].size] / 2.0f;
             if (laser_min_x <= aster_max_x && laser_max_x >= aster_min_x) {
                 astero_damage(i, pi, LASER_DMG);
             }
         }
     }
 
-    for(int i = 0; i<MAX_ITEMS ; i++) {
+    for (int i = 0; i < MAX_ITEMS; i++) {
         if (items[i].active) {
             if (collision(items[i].x, items[i].y, ITEM_SIZE, ITEM_SIZE,
-                          x, SCREEN_SIZE/2, LASER_BEAM_DMG_WIDTH, SCREEN_SIZE)) {
+                          x, SCREEN_SIZE / 2, LASER_BEAM_DMG_WIDTH, SCREEN_SIZE)) {
                 items[i].active = false;
                 get_item(pi, items[i].type);
             }
         }
-
-    } 
+    }
 }
 
 static void update_players(void) {
 
-    for (int i=0 ; i<2 ; i++){
+    for (int i = 0; i < 2; i++) {
         if (*player[i].pad & BUTTON_LEFT) {
             player[i].x -= player[i].speed;
-            if (player[i].x - P_COLL_WIDTH/2 < 0)
-                player[i].x = P_COLL_WIDTH/2;
+            if (player[i].x - P_COLL_WIDTH / 2 < 0)
+                player[i].x = P_COLL_WIDTH / 2;
             if (player[i].xdir < 2)
                 player[i].xdir++;
         } else if (*player[i].pad & BUTTON_RIGHT) {
             player[i].x += player[i].speed;
-            if (player[i].x + P_COLL_WIDTH/2 > SCREEN_SIZE)
-                player[i].x = SCREEN_SIZE - P_COLL_WIDTH/2;
+            if (player[i].x + P_COLL_WIDTH / 2 > SCREEN_SIZE)
+                player[i].x = SCREEN_SIZE - P_COLL_WIDTH / 2;
             if (player[i].xdir > -2)
                 player[i].xdir--;
         } else {
@@ -563,31 +566,29 @@ static void update_players(void) {
 
             int bi = 0;
 
-            for (int j = 0 ; j<2 ; j++) {
+            for (int j = 0; j < 2; j++) {
                 bi = next_free(player[i].bullet.y, sizeof(player[i].bullet.y), bi);
                 if (bi >= 0) {
-                    player[i].bullet.y[bi] = (uint8_t) (player[i].y + CANON_Y_OFFSET/2 * player[i].bullet.dir);
-                    player[i].bullet.x[bi] = (uint8_t) (player[i].x - CANON_X_OFFSET + CANON_X_OFFSET*2*j);
+                    player[i].bullet.y[bi] = (uint8_t)(player[i].y + CANON_Y_OFFSET / 2 * player[i].bullet.dir);
+                    player[i].bullet.x[bi] = (uint8_t)(player[i].x - CANON_X_OFFSET + CANON_X_OFFSET * 2 * j);
                 }
             }
-             
         }
 
         if (player[i].bullet.timeout)
             player[i].bullet.timeout--;
 
-
         if (*player[i].pad & BUTTON_2 && !player[i].laser.timeout && player[i].upgrades[LASER] > 0) {
             if (!player[i].laser.charge) {
-                //tone(150 | (410 << 16), 0x383d3314, 30, TONE_NOISE); //laser charge
-                tone(150 | (410 << 16), 0x383d3314, 60, TONE_TRIANGLE); //laser charge
+                // tone(150 | (410 << 16), 0x383d3314, 30, TONE_NOISE); //laser charge
+                tone(150 | (410 << 16), 0x383d3314, 60, TONE_TRIANGLE); // laser charge
             }
 
             player[i].laser.charge++;
 
             if (player[i].laser.charge == LASER_CHARGE) {
                 player[i].upgrades[LASER]--;
-                tone(750 | (60 << 16), 0x0a0f0f, 100, TONE_PULSE2); //laser shoot
+                tone(750 | (60 << 16), 0x0a0f0f, 100, TONE_PULSE2); // laser shoot
                 player[i].laser.charge = 0;
                 player[i].laser.timeout = LASER_TIMEOUT;
                 player[i].laser.unload = LASER_UNLOAD;
@@ -596,34 +597,31 @@ static void update_players(void) {
             player[i].laser.charge = 0; // charge released
         }
 
-        
         if (player[i].laser.unload) {
             player[i].laser.unload--;
-            if(t%2 == 0) { // was OP without
-            	check_laser_collision(i);
+            if (t % 2 == 0) { // was OP without
+                check_laser_collision(i);
             }
         }
 
         if (player[i].laser.timeout)
             player[i].laser.timeout--;
 
-
-        for(int ai = 0; ai<MAX_ASTEROIDS ; ai++) {
+        for (int ai = 0; ai < MAX_ASTEROIDS; ai++) {
             if (asteroids[ai].active) {
                 if (astero_collision(
-                    asteroids[ai].x, asteroids[ai].y,
-                    astero_size[asteroids[ai].size]/2.0f,
-                    player[i].x,
-                    player[i].y,
-                    P_COLL_WIDTH/2
-                )) {
+                     asteroids[ai].x, asteroids[ai].y,
+                     astero_size[asteroids[ai].size] / 2.0f,
+                     player[i].x,
+                     player[i].y,
+                     P_COLL_WIDTH / 2)) {
                     astero_damage(ai, i, asteroids[ai].life);
-                    damage(i, ASTERO_DAMAGE_SCALE * ((uint8_t)asteroids[ai].size+1));
+                    damage(i, ASTERO_DAMAGE_SCALE * ((uint8_t)asteroids[ai].size + 1));
                 }
             }
         }
-        
-        for(int ii = 0; ii<MAX_ITEMS ; ii++) {
+
+        for (int ii = 0; ii < MAX_ITEMS; ii++) {
             if (items[ii].active) {
                 if (collision(items[ii].x, items[ii].y, ITEM_SIZE, ITEM_SIZE,
                               player[i].x, player[i].y, P_COLL_WIDTH, P_COLL_HEIGHT)) {
@@ -632,42 +630,42 @@ static void update_players(void) {
                 }
             }
         }
-        
-        for (int j = 0 ; j < SCREEN_SIZE ; j++) {
+
+        for (int j = 0; j < SCREEN_SIZE; j++) {
             const uint8_t *bx = &player[i].bullet.x[j];
             float *by = &player[i].bullet.y[j];
             if (*by != 0) {
                 if (*by < 0 || *by > SCREEN_SIZE) {
                     *by = 0;
                 } else {
-                    if (check_bullet_collision(i,j)) {
-        		*DRAW_COLORS = player2color(player[i]);
+                    if (check_bullet_collision(i, j)) {
+                        *DRAW_COLORS = player2color(player[i]);
 
-        		spawn_blast(*bx, (uint8_t)*by, i);
-                        //oval(*bx-EXPLO_SIZE/2, *by-EXPLO_SIZE/2, EXPLO_SIZE, EXPLO_SIZE);
+                        spawn_blast(*bx, (uint8_t)*by, i);
+                        // oval(*bx-EXPLO_SIZE/2, *by-EXPLO_SIZE/2, EXPLO_SIZE, EXPLO_SIZE);
                         *by = 0;
 
                     } else {
                         *by += player[i].bullet.speed * player[i].bullet.dir;
                         set_sprite_colors(player[i]);
                         blit(bullet,
-                             *bx-bulletWidth/2, (uint8_t)*by - bulletHeight/2,
+                             *bx - bulletWidth / 2, (uint8_t)*by - bulletHeight / 2,
                              bulletWidth, bulletHeight,
-                             bulletFlags|(player[i].bullet.dir>0?0:BLIT_FLIP_Y));
+                             bulletFlags | (player[i].bullet.dir > 0 ? 0 : BLIT_FLIP_Y));
                     }
                 }
-            }               
+            }
         }
-    } 
+    }
 }
 
 static void update_items(void) {
-    for (int i=0; i<MAX_ITEMS ; i++) {
-        if (items[i].active) { 
-            *DRAW_COLORS = (uint16_t)((2 + (t/4+items[i].type)%3)<<4);
+    for (int i = 0; i < MAX_ITEMS; i++) {
+        if (items[i].active) {
+            *DRAW_COLORS = (uint16_t)((2 + (t / 4 + items[i].type) % 3) << 4);
             blit(item_sprite[items[i].type],
-                 items[i].x - ITEM_SIZE/2,
-                 items[i].y - ITEM_SIZE/2,
+                 items[i].x - ITEM_SIZE / 2,
+                 items[i].y - ITEM_SIZE / 2,
                  ITEM_SIZE, ITEM_SIZE,
                  BLIT_1BPP);
         }
@@ -676,45 +674,41 @@ static void update_items(void) {
 
 static void draw_bar(struct player p) {
     uint8_t x = 0;
-    uint8_t y = (p.id == 0) ? 0 : SCREEN_SIZE - BAR_SIZE; 
+    uint8_t y = (p.id == 0) ? 0 : SCREEN_SIZE - BAR_SIZE;
 
     *DRAW_COLORS = player2color(p);
-    
+
     rect(0, y, p.life, BAR_SIZE);
 
-    x = p.life + BAR_GAP*2;
-    
-    for (int i=1; i < NUM_ITEM_TYPES ; i++) {
+    x = p.life + BAR_GAP * 2;
+
+    for (int i = 1; i < NUM_ITEM_TYPES; i++) {
         int ups = p.upgrades[i];
         if (ups > 0) {
             *DRAW_COLORS = 0x20 | player2color(p);
-            blit(item_sprite[(enum itemtype) i], x, y,
+            blit(item_sprite[(enum itemtype)i], x, y,
                  ITEM_SIZE, ITEM_SIZE, BLIT_1BPP);
             x += ITEM_SIZE + BAR_GAP;
 
-
             *DRAW_COLORS = 0x2;
-            if(ups == MAX_UPGRADE) {
+            if (ups == MAX_UPGRADE) {
                 text("MAX", x, y);
-                x += FONT_SIZE*3 + BAR_GAP*2;
+                x += FONT_SIZE * 3 + BAR_GAP * 2;
             } else {
                 text(digits[ups], x, y);
-                x += FONT_SIZE + BAR_GAP*2;
+                x += FONT_SIZE + BAR_GAP * 2;
             }
-            
         }
     }
 }
-    
 
-static void blit_ship(struct player p, const uint8_t* sprite, int sprite_idx, uint32_t stride, uint32_t flags) {
-    blitSub(sprite, 
-            p.x - P_SIZE/2, p.y - P_SIZE/2,
+static void blit_ship(struct player p, const uint8_t *sprite, int sprite_idx, uint32_t stride, uint32_t flags) {
+    blitSub(sprite,
+            p.x - P_SIZE / 2, p.y - P_SIZE / 2,
             P_SIZE, P_SIZE,
-            (uint32_t)(P_SIZE*sprite_idx), 0,
+            (uint32_t)(P_SIZE * sprite_idx), 0,
             stride,
             flags | p.drawflags);
-    
 }
 
 static void draw_ship(struct player p) {
@@ -727,7 +721,7 @@ static void draw_ship(struct player p) {
         xflip = BLIT_FLIP_X;
         sprite_idx = -sprite_idx;
     }
-    
+
     *DRAW_COLORS = 1;
 
     blit_ship(p, ship_shadow, sprite_idx, ship_shadowWidth, ship_shadowFlags | xflip);
@@ -735,25 +729,24 @@ static void draw_ship(struct player p) {
     set_sprite_colors(p);
     blit_ship(p, ship, sprite_idx, shipWidth, shipFlags | xflip);
 
-
-    int bullet_frame = (p.bullet.rate - p.bullet.timeout)/2;
+    int bullet_frame = (p.bullet.rate - p.bullet.timeout) / 2;
     if (bullet_frame < SHOOT_BULLETS_FRAMES) {
-        blitSub(shoot_bullet_anim, 
-                p.x - P_SIZE/2, p.y - P_SIZE/2,
+        blitSub(shoot_bullet_anim,
+                p.x - P_SIZE / 2, p.y - P_SIZE / 2,
                 P_SIZE, P_SIZE,
-                (uint32_t)(P_SIZE*bullet_frame),
-                (sprite_idx>0 ? 0: 1) * P_SIZE,
+                (uint32_t)(P_SIZE * bullet_frame),
+                (sprite_idx > 0 ? 0 : 1) * P_SIZE,
                 shoot_bullet_animWidth,
-                shoot_bullet_animFlags | xflip | p.drawflags); 
+                shoot_bullet_animFlags | xflip | p.drawflags);
     }
 
     if (p.laser.charge) {
-        int laser_charge_frame = (p.laser.charge*LASER_CHARGE_FRAMES) / LASER_CHARGE;
+        int laser_charge_frame = (p.laser.charge * LASER_CHARGE_FRAMES) / LASER_CHARGE;
         blitSub(shoot_laser_anim,
-                p.x - P_SIZE/2, p.y - P_SIZE/2,
+                p.x - P_SIZE / 2, p.y - P_SIZE / 2,
                 P_SIZE, P_SIZE,
-                (uint32_t)(P_SIZE*laser_charge_frame),
-                (sprite_idx>0 ? 1: 0) * P_SIZE,
+                (uint32_t)(P_SIZE * laser_charge_frame),
+                (sprite_idx > 0 ? 1 : 0) * P_SIZE,
                 shoot_laser_animWidth,
                 shoot_laser_animFlags | xflip | p.drawflags);
     }
@@ -761,47 +754,46 @@ static void draw_ship(struct player p) {
     if (p.laser.unload) {
         int laser_frame = p.laser.unload % LASER_FRAMES;
         blitSub(laser,
-                p.x - LASER_BEAM_WIDTH/2, LASER_OFFSET * p.bullet.dir,
+                p.x - LASER_BEAM_WIDTH / 2, LASER_OFFSET * p.bullet.dir,
                 LASER_BEAM_WIDTH, laserHeight,
                 (uint32_t)(LASER_BEAM_WIDTH * laser_frame), 0,
                 laserWidth,
                 laserFlags | xflip | p.drawflags);
-        
     }
 }
 
 static void draw_players(void) {
-    for (int i=0 ; i<2 ; i++){
+    for (int i = 0; i < 2; i++) {
         draw_bar(player[i]);
         draw_ship(player[i]);
-    } 
+    }
 }
 
 static void draw_bg(void) {
 
-    float pi_t = (float)(t*M_PI*2/1024);
+    float pi_t = (float)(t * M_PI * 2 / 1024);
 
     int32_t margin = bgWidth - SCREEN_SIZE;
-    
-    int32_t x = (int32_t)(sinf(pi_t) * (float)margin/2) - margin/2;
-    int32_t y = (int32_t)(cosf(pi_t) * (float)margin/2) - margin/2;
+
+    int32_t x = (int32_t)(sinf(pi_t) * (float)margin / 2) - margin / 2;
+    int32_t y = (int32_t)(cosf(pi_t) * (float)margin / 2) - margin / 2;
 
     blit(bg, x, y, bgWidth, bgHeight, bgFlags);
-    //blit(bg, y, x, bgWidth, bgHeight, bgFlags | BLIT_FLIP_Y);
+    // blit(bg, y, x, bgWidth, bgHeight, bgFlags | BLIT_FLIP_Y);
 }
 
 static void update_start(void) {
-    //draw_bg();
+    // draw_bg();
 
     *DRAW_COLORS = 0x4320;
 
     blit(startscreen, 0, 0, startscreenWidth, startscreenHeight, startscreenFlags);
-    
-    uint32_t button_width = start_buttonWidth/start_button_Frames;
-    uint32_t button_frame = start_button_Frames -1;
 
-    if (t/start_button_Time_scale % (start_button_Frames*start_button_Interval) < start_button_Frames) {
-        button_frame = t/start_button_Time_scale % start_button_Frames;
+    uint32_t button_width = start_buttonWidth / start_button_Frames;
+    uint32_t button_frame = start_button_Frames - 1;
+
+    if (t / start_button_Time_scale % (start_button_Frames * start_button_Interval) < start_button_Frames) {
+        button_frame = t / start_button_Time_scale % start_button_Frames;
     }
 
     blitSub(start_button,
@@ -812,42 +804,38 @@ static void update_start(void) {
             start_buttonFlags);
 
     //*DRAW_COLORS = 2 + t/4%3;
-    //text("Ready?", 80-24, 80-4);
+    // text("Ready?", 80-24, 80-4);
 
     if (global_delay > 0) {
         global_delay--;
         return;
     }
-    
+
     bool p1_ready = *player[0].pad & BUTTON_1;
     bool p2_ready = *player[1].pad & BUTTON_1;
 
-    *DRAW_COLORS = 3 + t/6%2;
+    *DRAW_COLORS = 3 + t / 6 % 2;
 
     if (p1_ready) {
-        text("P1 ready", SCREEN_SIZE/2-4*FONT_SIZE, SCREEN_SIZE-FONT_SIZE);
+        text("P1 ready", SCREEN_SIZE / 2 - 4 * FONT_SIZE, SCREEN_SIZE - FONT_SIZE);
     }
     if (p2_ready) {
-        text("P2 ready", SCREEN_SIZE/2-4*FONT_SIZE, SCREEN_SIZE-FONT_SIZE);
+        text("P2 ready", SCREEN_SIZE / 2 - 4 * FONT_SIZE, SCREEN_SIZE - FONT_SIZE);
     }
 
     bool button_clicked = false;
 
     if (*MOUSE_BUTTONS & MOUSE_LEFT) {
-    	uint32_t mx = (uint32_t) *MOUSE_X;
-    	uint32_t my = (uint32_t) *MOUSE_Y;
+        uint32_t mx = (uint32_t)*MOUSE_X;
+        uint32_t my = (uint32_t)*MOUSE_Y;
 
-    	button_clicked = mx > start_button_X &&
-    		         mx < start_button_X + button_width &&
-    		         my > start_button_Y &&
-    		         my < start_button_Y + start_buttonHeight;
+        button_clicked = mx > start_button_X && mx < start_button_X + button_width && my > start_button_Y && my < start_button_Y + start_buttonHeight;
     }
-    
 
     if ((p1_ready && p2_ready) || button_clicked) {
-        //tone(262, 60 | (30 << 8), 100, TONE_PULSE1);
+        // tone(262, 60 | (30 << 8), 100, TONE_PULSE1);
 
-        //tone(60 | (290 << 16), 0x020f0f08, 100, TONE_PULSE1);
+        // tone(60 | (290 << 16), 0x020f0f08, 100, TONE_PULSE1);
         play_palette();
         state = PLAY;
     }
@@ -857,7 +845,7 @@ static void update_play(void) {
 
     *DRAW_COLORS = 0x20;
     draw_bg();
-    
+
     update_players();
     update_asteroids();
     draw_players();
@@ -867,28 +855,28 @@ static void update_play(void) {
 
 static void draw_end_name(bool randoffset) {
     blitSub(end_name,
-            end_nameX + (randoffset ? rand()%5-2 : 0),
-            end_nameY + (randoffset ? rand()%5-2 : 0),
-            end_nameWidth, end_nameHeight/2,
-            0, (1-winner)*end_nameHeight/2, end_nameWidth, end_nameFlags);
+            end_nameX + (randoffset ? rand() % 5 - 2 : 0),
+            end_nameY + (randoffset ? rand() % 5 - 2 : 0),
+            end_nameWidth, end_nameHeight / 2,
+            0, (1 - winner) * end_nameHeight / 2, end_nameWidth, end_nameFlags);
 }
 
 static void update_end(void) {
-   
+
     *DRAW_COLORS = 0x4320;
 
-    if(*player[winner].pad & BUTTON_1) {
+    if (*player[winner].pad & BUTTON_1) {
         *DRAW_COLORS = 0x40;
         draw_bg();
-        if (t/4%2) {
+        if (t / 4 % 2) {
             *DRAW_COLORS = 0x30;
             draw_end_name(true);
             *DRAW_COLORS = 0x4420;
         } else {
             *DRAW_COLORS = 0x4320;
         }
-        if (rand()%20 == 0) {
-            spawn_blast((uint8_t)(rand()%SCREEN_SIZE), (uint8_t)(rand()%SCREEN_SIZE), winner);
+        if (rand() % 20 == 0) {
+            spawn_blast((uint8_t)(rand() % SCREEN_SIZE), (uint8_t)(rand() % SCREEN_SIZE), winner);
         }
     }
 
@@ -902,14 +890,13 @@ static void update_end(void) {
 
     if (global_delay > 0) {
         global_delay--;
-    } else if (*MOUSE_BUTTONS & MOUSE_LEFT ||
-               (*player[0].pad & BUTTON_1 && *player[1].pad & BUTTON_1)) {
+    } else if (*MOUSE_BUTTONS & MOUSE_LEFT || (*player[0].pad & BUTTON_1 && *player[1].pad & BUTTON_1)) {
         global_delay = START_DELAY;
         start();
     }
 }
 
-void update (void) {
+void update(void) {
     t++;
     (void)rand();
 
